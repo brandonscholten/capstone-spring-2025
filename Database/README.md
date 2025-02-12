@@ -2,7 +2,7 @@
 
 build and start the docker container
 ```
-docker compose up -d
+sudo docker compose --env-file ../.env  up -d
 ```
 
 connect to the SQL database directly to see what's goin on
