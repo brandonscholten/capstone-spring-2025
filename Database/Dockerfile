@@ -1,8 +1,5 @@
 FROM mysql:latest
 
-# Copy seed file into the container
-COPY seed.sql /docker-entrypoint-initdb.d/
-
 # Use environment variables defined in the .env file
 ARG MYSQL_ROOT_PASSWORD
 ARG MYSQL_DATABASE
