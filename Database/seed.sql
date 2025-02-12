@@ -20,6 +20,7 @@ CREATE TABLE users (
     user_id INT NOT NULL AUTO_INCREMENT,
     user_name VARCHAR(255) NOT NULL UNIQUE,
     user_pass VARCHAR(255) NOT NULL,
+    is_admin bit NOT NULL,
     PRIMARY KEY (user_id)
 );
 
@@ -27,6 +28,7 @@ CREATE TABLE event (
     event_id INT NOT NULL AUTO_INCREMENT,
     asset_id INT, 
     custom_game_title VARCHAR(255),
+    image_url VARCHAR(255),
     event_time DATETIME NOT NULL, 
     event_name VARCHAR(255) NOT NULL,
     event_description TEXT NOT NULL,
@@ -35,4 +37,11 @@ CREATE TABLE event (
     PRIMARY KEY (event_id),
     FOREIGN KEY (asset_id) REFERENCES catalogue(asset_id) ON DELETE SET NULL,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+CREATE TABLE rsvp (
+    user_id int not null,
+    event_id int not null,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (event_id) REFERENCES event(event_id) ON DELETE CASCADE
 );
