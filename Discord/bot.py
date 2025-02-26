@@ -2,14 +2,23 @@
 #added in other files and imported here
 import discord
 from discord.ext import commands
-from Messages import foo
 import os
 
 from dotenv import load_dotenv, dotenv_values
 
+import asyncio
+
+    
+async def load_cogs(bot):
+    cog_list = [
+        'messages'
+    ]
+
+    for cog in cog_list:
+        await bot.load_extension(f'cogs.{cog}')
 
 
-def main():
+async def run_bot():
     #load the .env file
     load_dotenv()
 
@@ -20,12 +29,25 @@ def main():
 
     bot = commands.Bot(command_prefix="/", intents=intents)
 
+    #Update the command tree, this ensures all commands show up
+    @bot.event
+    async def on_ready():
+        print("Bot is getting ready")
+        await bot.tree.sync()
+        print("Bot is ready")
 
-    #Call other supporting commands here and add them to the bot
-    bot.command()(foo)
 
-    #Run the bot with the token in the .env file
-    bot.run(os.getenv("DISCORD_TOKEN"))
+    await load_cogs(bot)
+
+    return bot
+
+def main():
+    result = asyncio.run(run_bot())
+
+    print(result)
+
+    result.run(os.getenv("DISCORD_TOKEN"))
+
 
 
 
