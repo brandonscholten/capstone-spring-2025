@@ -173,7 +173,6 @@ export default function Home() {
           {activeTab === "games" && (
             <button 
               onClick={() => {
-                console.log("I'm genuinely baffled")
                 setIsModalOpen(true)}}
               className="px-4 py-2 bg-[#942E2A] text-white rounded-lg"
             >
@@ -193,7 +192,7 @@ export default function Home() {
               onMouseEnter={() => handleMouseEnter(event.id)}
               onMouseLeave={handleMouseLeave}
               className={`mx-auto relative transition-all duration-300 rounded-lg shadow-lg p-4 flex flex-col items-center overflow-hidden border border-gray-200 
-                ${hoveredEvent === event.id ? "w-[15vw] scale-105 transform -translate-x-5" : "w-[13vw] scale-95"}
+                ${hoveredEvent === event.id ? "w-[20vw] scale-105 transform -translate-x-5" : "w-[17vw] scale-95"}
               `}
             >
               <img
@@ -206,6 +205,7 @@ export default function Home() {
               <div className="mt-4 text-center w-full">
                 <h2 className="text-xl font-bold mb-2">{event.title}</h2>
                 <p className="text-gray-700 font-semibold">Game: {event.game}</p>
+                <p className="text-gray-700 font-semibold">Date: {event.date}</p>
                 <p className="text-gray-700 font-semibold">Time: {event.time}</p>
                 <p className="text-gray-700 font-semibold">Price: {event.price}</p>
                 <p className="text-gray-500 text-sm mt-2">
