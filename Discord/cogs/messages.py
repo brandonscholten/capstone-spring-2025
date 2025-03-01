@@ -59,6 +59,13 @@ class Messages(commands.Cog):
 
         #await interaction.response.send_message("Event has been scheduled successfully!")
 
+        #Send a message to create a thread on (have to without the server being Nitro boosted)
+        threadStarter = (await interaction.response.send_message("Creating a thread to schedule, please open the thread to continue (The thread will be deleted afterwards for privacy)")).resource
+
+        #
+        #   Thread creation
+        #
+        await threadStarter.create_thread(name="Test Thread")
 
         #Ask if the person would like to book the private room for the event?
         await interaction.response.send_message("Would you like to book a private room for the event (Can do half and full room)? \n\n 👍 - Yes \n\n 👎- No ")
