@@ -1,5 +1,15 @@
-#This file will contain a Discord bot using discord.py, this is the runner, functionality is then
-#added in other files and imported here
+#######################################
+#                                     #
+# Bot & Bevy                          #
+#                                     #
+# Discord Bot Configuration &         #
+# Runner                              #
+#                                     #
+# Created By: Elliott Hager           #
+# Last Modified: 2/27/2025            #
+#######################################
+
+
 import discord
 from discord.ext import commands
 import os

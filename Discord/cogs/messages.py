@@ -1,3 +1,18 @@
+#######################################
+#                                     #
+# Bot & Bevy                          #
+#                                     #
+# Discord Bot Message Cog &           #
+# Application Commands                #
+#                                     #
+# Handles Messaging, DM, & API        #
+# Calls for the Discord Bot           #
+#                                     #
+#                                     #
+# Created By: Elliott Hager           #
+# Last Modified: 2/27/2025            #
+#######################################
+
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -46,7 +61,7 @@ class Messages(commands.Cog):
 
 
         #Ask if the person would like to book the private room for the event?
-        await interaction.followup.send("Would you like to book a private room for the event (Can do half and full room)? \n\n 👍 - Yes \n\n 👎- No ")
+        await interaction.response.send_message("Would you like to book a private room for the event (Can do half and full room)? \n\n 👍 - Yes \n\n 👎- No ")
 
         #Grab the message to then add the valid reactions to make it easier on the user
         privateRoomWanted = await interaction.original_response()
@@ -67,7 +82,8 @@ class Messages(commands.Cog):
         
         await interaction.followup.send("Thank you for scheduling your event!")
 
-
+    #@app_commands.command()
+    #async def 
         
 
     
