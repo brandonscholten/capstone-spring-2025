@@ -1,5 +1,5 @@
 import { useState } from "react";
-import CreateGameModal from "./createGame";
+import CreateGameModal from "./components/createGame";
 
 const mockEvents = [
   {

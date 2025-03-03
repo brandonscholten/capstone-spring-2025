@@ -1,87 +1,106 @@
-import { useState } from "react";
-import CreateGameModal from "./createGame";
+import { useState, useEffect } from "react";
+import CreateGameModal from "./components/createGame";
+import EventCard from "./components/EventCard";
+import GameCard from "./components/GameCard";
+import CreateEventModal from "./components/CreateEventModal";
 
 const mockEvents = [
   {
     id: 1,
     title: "Board Game Night",
-    description: "Join us for an epic board game night! This will be a fun and engaging experience where players can trade, build, and strategize.",
-    time: "6:00 PM - 9:00 PM",
+    description:
+      "Join us for an epic board game night! This will be a fun and engaging experience where players can trade, build, and strategize.",
+    startTime: "20250303T190000Z",
+    endTime: "20250303T230000Z",
     game: "Catan",
     price: "$5",
     people: 8,
-    image: "https://picsum.photos/200/300",
+    image: "https://picsum.photos/200/300?random=1",
   },
   {
     id: 2,
-    title: "D&D Campaign",
-    description: "A one-shot D&D adventure filled with mystery, action, and adventure! Perfect for beginners and veterans alike.",
-    time: "7:30 PM - 11:00 PM",
-    game: "Dungeons & Dragons",
-    price: "Free",
+    title: "Strategy Showdown",
+    description:
+      "Challenge your mind with a night of strategic gameplay and intense competition.",
+    startTime: "20250304T180000Z",
+    endTime: "20250304T210000Z",
+    game: "Risk",
+    price: "$10",
+    people: 6,
+    image: "https://picsum.photos/200/300?random=2",
+  },
+  {
+    id: 3,
+    title: "Family Game Fiesta",
+    description:
+      "Bring the family together for a night of fun games and laughter.",
+    startTime: "20250305T170000Z",
+    endTime: "20250305T200000Z",
+    game: "Monopoly",
+    price: "$8",
+    people: 4,
+    image: "https://picsum.photos/200/300?random=3",
+  },
+  {
+    id: 4,
+    title: "Dice Roll Tournament",
+    description:
+      "Roll the dice and test your luck in this thrilling tournament.",
+    startTime: "20250306T190000Z",
+    endTime: "20250306T220000Z",
+    game: "Yahtzee",
+    price: "$7",
+    people: 10,
+    image: "https://picsum.photos/200/300?random=4",
+  },
+  {
+    id: 5,
+    title: "Card Game Social",
+    description:
+      "Gather with friends for an evening of classic and modern card games.",
+    startTime: "20250307T200000Z",
+    endTime: "20250307T230000Z",
+    game: "Poker",
+    price: "$12",
     people: 5,
-    image: "https://picsum.photos/200/300",
+    image: "https://picsum.photos/200/300?random=5",
+  },
+  {
+    id: 6,
+    title: "Role-Playing Quest",
+    description:
+      "Embark on an immersive role-playing adventure filled with mystery and excitement.",
+    startTime: "20250308T170000Z",
+    endTime: "20250308T230000Z",
+    game: "Dungeons & Dragons",
+    price: "$15",
+    people: 8,
+    image: "https://picsum.photos/200/300?random=6",
   },
   {
     id: 7,
-    title: "Trivia Night",
-    description: "Test your knowledge across various categories in an exciting trivia competition!",
-    time: "7:00 PM - 9:00 PM",
-    game: "Trivia",
-    price: "Free",
-    people: 20,
-    image: "https://picsum.photos/200/300",
+    title: "Trivia Challenge Night",
+    description:
+      "Test your knowledge and compete for fun prizes in this trivia challenge.",
+    startTime: "20250309T180000Z",
+    endTime: "20250309T210000Z",
+    game: "Trivial Pursuit",
+    price: "$5",
+    people: 7,
+    image: "https://picsum.photos/200/300?random=7",
   },
   {
     id: 8,
-    title: "Mafia Game Night",
-    description: "Can you survive the night? A thrilling social deduction game where deception is key.",
-    time: "8:00 PM - 10:30 PM",
-    game: "Mafia",
-    price: "$5",
-    people: 15,
-    image: "https://picsum.photos/200/300",
-  },
-  {
-    id: 9,
-    title: "Codenames Tournament",
-    description: "Work with your team to find the right words while avoiding the enemy’s traps!",
-    time: "6:00 PM - 8:30 PM",
-    game: "Codenames",
-    price: "$10",
-    people: 8,
-    image: "https://picsum.photos/200/300",
-  },
-  {
-    id: 10,
-    title: "Risk Strategy Night",
-    description: "Dominate the world in this intense game of strategy and alliances!",
-    time: "5:30 PM - 10:00 PM",
-    game: "Risk",
-    price: "$7",
+    title: "Puzzle Challenge",
+    description:
+      "Solve puzzles and compete in this fun and brain-teasing event.",
+    startTime: "20250310T190000Z",
+    endTime: "20250310T220000Z",
+    game: "Scrabble",
+    price: "$6",
     people: 6,
-    image: "https://picsum.photos/200/300",
+    image: "https://picsum.photos/200/300?random=8",
   },
-  {
-    id: 11,
-    title: "Werewolf Night",
-    description: "A night of hidden roles, strategy, and intense discussions. Can you uncover the werewolves?",
-    time: "9:00 PM - 11:30 PM",
-    game: "Werewolf",
-    price: "$5",
-    people: 12,
-    image: "https://picsum.photos/200/300",
-  },
-  {
-    id: 12,
-    title: "Jackbox Party Games",
-    description: "Join us for a fun and hilarious night of digital party games!",
-    time: "7:30 PM - 10:00 PM",
-    game: "Jackbox",
-    price: "Free",
-    people: 10,
-    image: "https://picsum.photos/200/300",
-  }
 ];
 
 const mockGames = [
@@ -91,7 +110,8 @@ const mockGames = [
     organizer: "Alice",
     players: 4,
     description: "Build settlements, trade resources, and dominate Catan!",
-    time: "6:00 PM",
+    startTime: "20250303T180000Z",
+    endTime: "20250303T210000Z",
     participants: ["Alice", "Bob", "Charlie"],
   },
   {
@@ -100,31 +120,71 @@ const mockGames = [
     organizer: "Dave",
     players: 5,
     description: "A thrilling dungeon-crawling experience!",
-    time: "7:30 PM",
+    startTime: "20250304T193000Z",
+    endTime: "20250304T223000Z",
     participants: ["Dave", "Eve"],
+  },
+  {
+    id: 3,
+    title: "Chess Tournament",
+    organizer: "Frank",
+    players: 2,
+    description: "Test your strategic skills in a quick game of chess.",
+    startTime: "20250305T170000Z",
+    endTime: "20250305T190000Z",
+    participants: ["Frank", "Grace"],
+  },
+  {
+    id: 4,
+    title: "Poker Night",
+    organizer: "Helen",
+    players: 6,
+    description: "Bluff your way to victory in this exciting poker game.",
+    startTime: "20250306T200000Z",
+    endTime: "20250306T230000Z",
+    participants: ["Helen", "Ivy", "Jack"],
+  },
+  {
+    id: 5,
+    title: "Scrabble Showdown",
+    organizer: "Kevin",
+    players: 4,
+    description: "Wordsmiths unite for a battle of letters and strategy.",
+    startTime: "20250307T180000Z",
+    endTime: "20250307T210000Z",
+    participants: ["Kevin", "Laura", "Mike", "Nina"],
+  },
+  {
+    id: 6,
+    title: "Trivia Challenge",
+    organizer: "Olivia",
+    players: 8,
+    description: "Test your knowledge in this fast-paced trivia night.",
+    startTime: "20250308T190000Z",
+    endTime: "20250308T220000Z",
+    participants: ["Olivia", "Paul", "Quincy", "Rita"],
   },
 ];
 
 export default function Home() {
+
   const [activeTab, setActiveTab] = useState("events");
   const [rsvpData, setRsvpData] = useState({});
   const [sortBy, setSortBy] = useState("title");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [hoveredEvent, setHoveredEvent] = useState(null);
-  const [hoverTimeout, setHoverTimeout] = useState(null);
+  const [isGameModalOpen, setIsGameModalOpen] = useState(false);
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [isTokenValid, setIsTokenValid] = useState(false);
+  
+  // Check for token in local storage and simulate backend validation.
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      // Replace this with an actual API call for validation.
+      setIsTokenValid(true);
+    }
+  }, []);
 
-  const handleMouseEnter = (eventId) => {
-    const timeout = setTimeout(() => {
-      setHoveredEvent(eventId);
-    }, 250); 
-    setHoverTimeout(timeout);
-  };
-
-  const handleMouseLeave = () => {
-    clearTimeout(hoverTimeout);
-    setHoveredEvent(null);
-  };
   const handleRSVP = (eventId) => {
     const name = prompt("Enter your name:");
     const email = prompt("Enter your email:");
@@ -169,102 +229,73 @@ export default function Home() {
               Games
             </button>
           </div>
-          {/* Create Game Button (Top Right) */}
+          {/* Create Buttons */}
           {activeTab === "games" && (
             <button 
-              onClick={() => {
-                console.log("I'm genuinely baffled")
-                setIsModalOpen(true)}}
+              onClick={() => setIsGameModalOpen(true)}
               className="px-4 py-2 bg-[#942E2A] text-white rounded-lg"
             >
               Create Game
             </button>
           )}
+          {activeTab === "events" && isTokenValid && (
+            <button 
+              onClick={() => setIsEventModalOpen(true)}
+              className="px-4 py-2 bg-[#942E2A] text-white rounded-lg"
+            >
+              Create Event
+            </button>
+          )}
         </div>
 
-        {/* Events Tab */}
+        {/* Content for each tab */}
         {activeTab === "events" ? (
-
           <div className="w-full max-w-6xl bg-white shadow-md rounded-lg p-6">
-            <div className="grid grid-cols-3 gap-6">
-          {mockEvents.map((event) => (
-            <div
-              key={event.id}
-              onMouseEnter={() => handleMouseEnter(event.id)}
-              onMouseLeave={handleMouseLeave}
-              className={`mx-auto relative transition-all duration-300 rounded-lg shadow-lg p-4 flex flex-col items-center overflow-hidden border border-gray-200 
-                ${hoveredEvent === event.id ? "w-[15vw] scale-105 transform -translate-x-5" : "w-[13vw] scale-95"}
-              `}
-            >
-              <img
-                src={event.image}
-                alt={event.title}
-                className={`w-full h-40 object-cover rounded-lg transition-all duration-300 
-                  ${hoveredEvent === event.id ? "h-48" : "h-40"}
-                `}
-              />
-              <div className="mt-4 text-center w-full">
-                <h2 className="text-xl font-bold mb-2">{event.title}</h2>
-                <p className="text-gray-700 font-semibold">Game: {event.game}</p>
-                <p className="text-gray-700 font-semibold">Time: {event.time}</p>
-                <p className="text-gray-700 font-semibold">Price: {event.price}</p>
-                <p className="text-gray-500 text-sm mt-2">
-                  {hoveredEvent === event.id
-                    ? event.description
-                    : event.description.substring(0, 50) + "..."}
-                </p>
-                <button
-                  className="mt-4 px-4 py-2 bg-[#942E2A] text-white rounded hover:scale-105 transition-all"
-                >
-                  RSVP
-                </button>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {mockEvents.map((event) => (
+                <EventCard event={event} key={event.id} isValid={isTokenValid} />
+              ))}
             </div>
-          ))}
-
-          </div>
           </div>
         ) : (
           <div>
             <div className="mb-4 flex items-center">
               <label className="mr-2 font-semibold text-gray-700">Search by Title:</label>
+              <form autoComplete="off">
               <input 
                 type="text" 
-                placeholder="Enter game title..." 
+                name="searchQueryNoAutofill" 
+                placeholder="Enter game title..."
+                autoComplete="off"
                 value={searchQuery} 
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="p-2 border rounded w-64"
               />
+            </form>
+
             </div>
 
             {sortedGames
               .filter((game) => game.title.toLowerCase().includes(searchQuery.toLowerCase()))
               .map((game) => (
-                <div key={game.id} className="mb-4 p-4 border rounded-lg shadow flex space-x-4">
-                  <div className="flex-1 flex">
-                    <div className="w-1/2">
-                      <h2 className="text-xl font-bold mb-2">{game.title}</h2>
-                      <div className="grid gap-y-1">
-                        <p><span className="font-semibold text-gray-700">Organizer:</span> {game.organizer}</p>
-                        <p><span className="font-semibold text-gray-700">Players:</span> {game.players}</p>
-                        <p><span className="font-semibold text-gray-700">Time:</span> {game.time}</p>
-                        <p><span className="font-semibold text-gray-700">Participants:</span> {game.participants.join(", ")}</p>
-                      </div>
-                      <button onClick={() => handleRSVP(game.id)} className="mt-4 px-4 py-2 bg-[#942E2A] text-white rounded">
-                        RSVP
-                      </button>
-                    </div>
-                    <div className="w-1/2 pl-4 border-l flex items-center">
-                      <p>{game.description}</p>
-                    </div>
-                  </div>
-                </div>
+                <GameCard game={game} rsvpData={rsvpData} onRSVP={handleRSVP} key={game.id} />
               ))}
           </div>
         )}
 
-        {/* Create Game Modal */}
-        {isModalOpen && <CreateGameModal setIsModalOpen={setIsModalOpen} onClose={() => setIsModalOpen(false)} />}
+        {/* Create Modals */}
+        {isGameModalOpen && (
+          <CreateGameModal 
+            setIsModalOpen={setIsGameModalOpen} 
+            onClose={() => setIsGameModalOpen(false)} 
+          />
+        )}
+        {isEventModalOpen && (
+          <CreateEventModal 
+            setIsModalOpen={setIsEventModalOpen} 
+            onClose={() => setIsEventModalOpen(false)} 
+          />
+        )}
       </div>
     </div>
   );
