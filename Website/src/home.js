@@ -3,6 +3,8 @@ import CreateGameModal from "./components/createGame";
 import EventCard from "./components/EventCard";
 import GameCard from "./components/GameCard";
 import CreateEventModal from "./components/CreateEventModal";
+import BoardGamesTab from "./components/BoardGamesTab";
+import CreateBoardGameModal from "./components/CreateBoardGameModal";
 
 const mockEvents = [
   {
@@ -149,7 +151,8 @@ const mockGames = [
     title: "Scrabble Showdown",
     organizer: "Kevin",
     players: 4,
-    description: "Wordsmiths unite for a battle of letters and strategy.",
+    description:
+      "Wordsmiths unite for a battle of letters and strategy.",
     startTime: "20250307T180000Z",
     endTime: "20250307T210000Z",
     participants: ["Kevin", "Laura", "Mike", "Nina"],
@@ -167,7 +170,6 @@ const mockGames = [
 ];
 
 export default function Home() {
-
   const [activeTab, setActiveTab] = useState("events");
   const [rsvpData, setRsvpData] = useState({});
   const [sortBy, setSortBy] = useState("title");
@@ -175,13 +177,17 @@ export default function Home() {
   const [isGameModalOpen, setIsGameModalOpen] = useState(false);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isTokenValid, setIsTokenValid] = useState(false);
-  
-  // Check for token in local storage and simulate backend validation.
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isBoardGameModalOpen, setIsBoardGameModalOpen] = useState(false);
+  // Check for token and simulate admin check.
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      // Replace this with an actual API call for validation.
       setIsTokenValid(true);
+      // Simulate admin check (for example, token === "admin")
+      if (token === "admin") {
+        setIsAdmin(true);
+      }
     }
   }, []);
 
@@ -228,6 +234,16 @@ export default function Home() {
             >
               Games
             </button>
+            <button 
+              onClick={() => setActiveTab("boardgames")}
+              className={`px-4 py-2 rounded-t-lg border ${
+                activeTab === "boardgames"
+                  ? "bg-[#942E2A] text-white border-t border-l border-r border-[#942E2A] font-semibold"
+                  : "bg-white text-black border-black"
+              }`}
+            >
+              Board Games
+            </button>
           </div>
           {/* Create Buttons */}
           {activeTab === "games" && (
@@ -246,9 +262,17 @@ export default function Home() {
               Create Event
             </button>
           )}
+          {activeTab === "boardgames" && isTokenValid && (
+            <button 
+              onClick={() => setIsBoardGameModalOpen(true)}
+              className="px-4 py-2 bg-[#942E2A] text-white rounded-lg"
+            >
+              Add Game
+            </button>
+          )}
         </div>
 
-        {/* Content for each tab */}
+        {/* Tab Content */}
         {activeTab === "events" ? (
           <div className="w-full max-w-6xl bg-white shadow-md rounded-lg p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -257,33 +281,35 @@ export default function Home() {
               ))}
             </div>
           </div>
-        ) : (
+        ) : activeTab === "games" ? (
           <div>
             <div className="mb-4 flex items-center">
-              <label className="mr-2 font-semibold text-gray-700">Search by Title:</label>
+              <label className="mr-2 font-semibold text-gray-700">
+                Search by Title:
+              </label>
               <form autoComplete="off">
-              <input 
-                type="text" 
-                name="searchQueryNoAutofill" 
-                placeholder="Enter game title..."
-                autoComplete="off"
-                value={searchQuery} 
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="p-2 border rounded w-64"
-              />
-            </form>
-
+                <input 
+                  type="text" 
+                  name="searchQueryNoAutofill" 
+                  placeholder="Enter game title..."
+                  autoComplete="off"
+                  value={searchQuery} 
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="p-2 border rounded w-64"
+                />
+              </form>
             </div>
-
             {sortedGames
               .filter((game) => game.title.toLowerCase().includes(searchQuery.toLowerCase()))
               .map((game) => (
                 <GameCard game={game} rsvpData={rsvpData} onRSVP={handleRSVP} key={game.id} />
               ))}
           </div>
-        )}
+        ) : activeTab === "boardgames" ? (
+          <BoardGamesTab isAdmin={isAdmin} />
+        ) : null}
 
-        {/* Create Modals */}
+        {/* Modals */}
         {isGameModalOpen && (
           <CreateGameModal 
             setIsModalOpen={setIsGameModalOpen} 
@@ -294,6 +320,12 @@ export default function Home() {
           <CreateEventModal 
             setIsModalOpen={setIsEventModalOpen} 
             onClose={() => setIsEventModalOpen(false)} 
+          />
+        )}
+        {isBoardGameModalOpen && (
+          <CreateBoardGameModal 
+            setIsModalOpen={setIsBoardGameModalOpen} 
+            onClose={() => setIsBoardGameModalOpen(false)} 
           />
         )}
       </div>

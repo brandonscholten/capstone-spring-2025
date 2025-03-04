@@ -100,7 +100,7 @@ export default function EventCard({ event, isValid }) {
         <img
           src={event.image}
           alt={event.title}
-          className={`w-full object-cover rounded-lg transition-all duration-300 
+          className={`w-full object-contain rounded-lg transition-all duration-300 
             ${hoveredEvent === event.id ? "h-48" : "h-40"}
           `}
         />

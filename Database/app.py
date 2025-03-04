@@ -1,25 +1,33 @@
-#This file will contain a Flask app with API routes for database operations
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_cors import CORS
+import requests
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'  # Change for MySQL or PostgreSQL
+CORS(app)  # Enable CORS for all routes
+
+# Update the connection string with your actual MySQL credentials and database name
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:BOTNBEVY@localhost:3306/database_name'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# Database Models
+# Database Models with explicit table names
+
 class User(db.Model):
+    __tablename__ = 'users'
     id = db.Column(db.BigInteger, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     last_game = db.Column(db.DateTime, nullable=True)
     email = db.Column(db.String(255), nullable=False)
     discord = db.Column(db.String(255), nullable=False)
+    # Reference the 'user' column in the user_interests table (make sure the column name matches)
     interests = db.Column(db.BigInteger, db.ForeignKey('user_interests.user'), nullable=False)
 
 class Catalogue(db.Model):
+    __tablename__ = 'catalogue'
     id = db.Column(db.BigInteger, primary_key=True)
     difficulty = db.Column(db.Float, nullable=False)
     name = db.Column(db.String(255), nullable=False)
@@ -28,6 +36,7 @@ class Catalogue(db.Model):
     last_time_game_played = db.Column(db.DateTime, nullable=False)
 
 class Event(db.Model):
+    __tablename__ = 'events'
     id = db.Column(db.BigInteger, db.ForeignKey('users.id'), primary_key=True)
     shop_wide_event = db.Column(db.Boolean, nullable=False)
     game = db.Column(db.BigInteger, db.ForeignKey('catalogue.id'), nullable=True)
@@ -37,14 +46,18 @@ class Event(db.Model):
     notify_tags = db.Column(db.BigInteger, db.ForeignKey('notifications.id'), nullable=False)
 
 class Notification(db.Model):
+    __tablename__ = 'notifications'
     id = db.Column(db.BigInteger, primary_key=True)
+    # Assuming 'thing_to_notify_about' should reference a tag from the events table,
+    # update this foreign key if necessary to match your schema design.
     thing_to_notify_about = db.Column(db.String(255), db.ForeignKey('events.notify_tags'), nullable=False)
 
 class UserInterest(db.Model):
+    __tablename__ = 'user_interests'
     user = db.Column(db.BigInteger, primary_key=True)
     notifications = db.Column(db.BigInteger, db.ForeignKey('notifications.id'), nullable=False)
 
-#Catalouge adds and Deletes
+# Catalogue adds and deletes
 @app.route('/catalouge', methods=['POST'])
 def add_game():
     data = request.get_json()
@@ -68,8 +81,7 @@ def delete_game():
         return jsonify({'message': 'Game deleted successfully!'}), 200
     return jsonify({'error': 'Game not found'}), 404
 
-
-#User adds and deletes
+# User adds and deletes
 @app.route('/users', methods=['POST'])
 def create_user():
     data = request.get_json()
@@ -77,7 +89,6 @@ def create_user():
     db.session.add(user)
     db.session.commit()
     return jsonify({'message': 'User created successfully!', 'id': user.id}), 201
-
 
 @app.route('/users', methods=['DELETE'])
 def delete_user():
@@ -96,9 +107,7 @@ def delete_user():
 
     return jsonify({'error': 'User not found'}), 404
 
-
-
-
+# Event adds and deletes
 @app.route('/events', methods=['POST'])
 def add_event():
     data = request.get_json()
@@ -106,9 +115,6 @@ def add_event():
     db.session.add(event)
     db.session.commit()
     return jsonify({'message': 'Event added successfully!', 'id': event.id}), 201
-
-
-
 
 @app.route('/events', methods=['DELETE'])
 def delete_event():
@@ -125,24 +131,20 @@ def delete_event():
 
     return jsonify({'error': 'Event not found'}), 404
 
-
 @app.route('/events', methods=['GET'])
 def get_all_events():
     events = Event.query.all()
     return jsonify([event.__dict__ for event in events if '_sa_instance_state' not in event.__dict__])
-
 
 @app.route('/events/shop_wide', methods=['GET'])
 def get_shop_wide_events():
     events = Event.query.filter_by(shop_wide_event=True).all()
     return jsonify([event.__dict__ for event in events if '_sa_instance_state' not in event.__dict__])
 
-
 @app.route('/events/not_shop_wide', methods=['GET'])
 def get_non_shop_wide_events():
     events = Event.query.filter_by(shop_wide_event=False).all()
     return jsonify([event.__dict__ for event in events if '_sa_instance_state' not in event.__dict__])
-
 
 @app.route('/events/search', methods=['GET'])
 def search_events():
@@ -167,7 +169,42 @@ def search_events():
     
     return jsonify([event.__dict__ for event in events if '_sa_instance_state' not in event.__dict__])
 
+# Proxy for BGG Search
+@app.route('/bgg/search', methods=['GET'])
+def bgg_search():
+    search_query = request.args.get('search', '')
+    exact = request.args.get('exact', '')
+    
+    if not search_query:
+        return jsonify({'error': 'Missing search parameter'}), 400
 
+    # Build the BGG search API URL
+    url = f"https://boardgamegeek.com/xmlapi/search?search={requests.utils.quote(search_query)}"
+    if exact:
+        url += f"&exact={exact}"
+    
+    try:
+        r = requests.get(url)
+        return Response(r.content, mimetype='application/xml')
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Proxy for detailed boardgame info from BGG
+@app.route('/bgg/boardgame/<game_id>', methods=['GET'])
+def bgg_boardgame(game_id):
+    params = {}
+    if 'stats' in request.args:
+        params['stats'] = request.args.get('stats')
+    url = f"https://boardgamegeek.com/xmlapi/boardgame/{game_id}"
+    if params:
+        query_str = '&'.join([f"{k}={v}" for k, v in params.items()])
+        url = f"{url}?{query_str}"
+    
+    try:
+        r = requests.get(url)
+        return Response(r.content, mimetype='application/xml')
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
