@@ -44,35 +44,25 @@ engine = create_engine(db_uri_with_db)
 metadata = MetaData()
 
 # Define Tables
-users = Table(
-    'users', metadata,
-    Column('id', Integer, primary_key=True),
-    Column('name', String(255), nullable=False),
-    Column('last_game', DateTime, nullable=True),
-    Column('email', String(255), nullable=False),
-    Column('discord', String(255), nullable=False),
-    Column('interests', Integer, ForeignKey('user_interests.user'), nullable=False)
-)
+
 
 catalogue = Table(
     'catalogue', metadata,
     Column('id', Integer, primary_key=True),
     Column('name', String(255), nullable=False),
-    Column('difficulty', Float, nullable=False),
-    Column('rating', Float, nullable=True),
-    Column('numplays', Integer, nullable=True),
-    Column('own', Boolean, nullable=True),
-    Column('fortrade', Boolean, nullable=True),
-    Column('want', Boolean, nullable=True),
-    Column('wanttobuy', Boolean, nullable=True),
-    Column('wanttoplay', Boolean, nullable=True),
+    Column('baverage', Float, nullable=False),
+    Column('average', Float, nullable=False),
+    Column('avgweight', Float, nullable=True),
     Column('acquisitiondate', DateTime, nullable=True),
     Column('acquiredfrom', String(255), nullable=True),
-    Column('invdate', DateTime, nullable=True),
-    Column('version_publishers', String(255), nullable=True),
-    Column('version_languages', String(255), nullable=True),
-    Column('version_yearpublished', Integer, nullable=True),
-    Column('version_nickname', String(255), nullable=True)
+    Column('minplayers', Integer, nullable=True),
+    Column('maxplayers', Integer, nullable=True),
+    Column('playingtimemin', Integer, nullable=True),
+    Column('playingtimemax', Integer, nullable=True),
+    Column('yearpublished', Integer, nullable=True),
+    Column('bestplayers', String(255), nullable=True),
+    Column('agerange', String(255), nullable=True),
+    
 )
 
 events = Table(
@@ -83,20 +73,8 @@ events = Table(
     Column('time', DateTime, nullable=False),
     Column('description', String(1000), nullable=False),
     Column('players', String(255), nullable=False),
-    Column('notify_tags', Integer, ForeignKey('notifications.id'), nullable=False)
 )
 
-notifications = Table(
-    'notifications', metadata,
-    Column('id', Integer, primary_key=True),
-    Column('thing_to_notify_about', Integer, ForeignKey('events.notify_tags'), nullable=False)
-)
-
-user_interests = Table(
-    'user_interests', metadata,
-    Column('user', Integer, primary_key=True),
-    Column('notifications', Integer, ForeignKey('notifications.id'), nullable=False)
-)
 
 # Drop existing tables with proper order to prevent circular dependency
 metadata.reflect(bind=engine)

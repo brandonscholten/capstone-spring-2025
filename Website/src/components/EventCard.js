@@ -56,7 +56,7 @@ function formatEventDateTime(startTimeStr, endTimeStr) {
   return { dateDisplay, timeDisplay };
 }
 
-export default function EventCard({ event, isValid }) {
+export default function EventCard({ event, isValid, resetEvents }) {
   const [hoveredEvent, setHoveredEvent] = useState(null);
   const [hoverTimeout, setHoverTimeout] = useState(null);
   const [isRSVPModalOpen, setRSVPModalOpen] = useState(false);
@@ -137,8 +137,30 @@ export default function EventCard({ event, isValid }) {
           onClose={() => setEditModalOpen(false)}
           initialData={event}
           onSubmit={(updatedData) => {
-            // Send an update call to the backend with updatedData.
-            console.log("Updating event:", updatedData);
+                fetch(`http://localhost:5000/events/${updatedData.id}`, {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(updatedData),
+                })
+                .then((res) => res.json())
+                .then(() => { resetEvents(); })
+                .catch((error) => console.error("Error updating event:", error));
+              setEditModalOpen(false);
+              }}
+              //FIX THIS IT"S INSECURE, ANYONE CAN HIT THE API WITHOUT NEEDING THE PASSWORD.
+              onDelete={(eventId) => {
+              fetch(`http://localhost:5000/events`, {
+                method: "DELETE",
+                headers: {
+                "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ id: eventId }),
+              })
+                .then((res) => res.json())
+                .then(() => { resetEvents(); })
+                .catch((error) => console.error("Error deleting event:", error));
             setEditModalOpen(false);
           }}
         />

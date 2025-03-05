@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@tailwindcss/cli": "^4.0.6",
+    "axios": "^1.8.1",
     "cra-template": "1.2.0",
     "dompurify": "^3.2.4",
     "react": "^19.0.0",

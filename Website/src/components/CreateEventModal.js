@@ -19,7 +19,7 @@ function combineDateTime(date, time) {
 }
 
 export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit, onDelete }) {
-  // If initialData exists, parse the ISO strings for startTime and endTime.
+  // Parse initial start and end times if available.
   const initialStartDate = initialData && initialData.startTime 
     ? parseEventDate(initialData.startTime).toISOString().slice(0, 10) 
     : "";
@@ -33,14 +33,43 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
     ? parseEventDate(initialData.endTime).toISOString().slice(11, 16) 
     : "";
 
-  // Controlled state for each form field.
+  // Controlled state for form fields.
   const [eventName, setEventName] = useState(initialData?.title || "");
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(initialEndDate);
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
   const [description, setDescription] = useState(initialData?.description || "");
-  // You can add additional state for image if needed.
+  const [price, setPrice] = useState(initialData?.price || "");
+  const [image, setImage] = useState(initialData?.image || "");
+  
+  // State for "Game" auto-suggest.
+  const [gameQuery, setGameQuery] = useState("");
+  const [selectedGameId, setSelectedGameId] = useState(initialData?.game || null);
+  const [catalogueItems, setCatalogueItems] = useState([]);
+  const [gameSuggestions, setGameSuggestions] = useState([]);
+
+  // Fetch catalogue items once when the modal mounts.
+  useEffect(() => {
+    fetch("http://localhost:5000/catalogue/titles")
+      .then((res) => res.json())
+      .then((data) => {
+        setCatalogueItems(data);
+      })
+      .catch((err) => console.error("Error fetching catalogue:", err));
+  }, []);
+
+  // Update game suggestions whenever gameQuery or catalogueItems change.
+  useEffect(() => {
+    if (gameQuery.trim() === "") {
+      setGameSuggestions([]);
+    } else {
+      const suggestions = catalogueItems.filter((item) =>
+        item.title.toLowerCase().includes(gameQuery.toLowerCase())
+      );
+      setGameSuggestions(suggestions);
+    }
+  }, [gameQuery, catalogueItems]);
 
   // Update state if initialData changes.
   useEffect(() => {
@@ -51,9 +80,14 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
       setStartTime(initialStartTime);
       setEndTime(initialEndTime);
       setDescription(initialData.description || "");
+      setPrice(initialData.price || "");
+      setImage(initialData.image || "");
+      setSelectedGameId(initialData.game || null);
+      // Optionally set gameQuery from the catalogue if available.
     }
   }, [initialData, initialStartDate, initialEndDate, initialStartTime, initialEndTime]);
 
+  // Handle form submission.
   const handleSubmit = () => {
     // Combine the separate date and time inputs back into ISO format.
     const updatedStartTime = combineDateTime(startDate, startTime);
@@ -61,27 +95,26 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
 
     // Construct the updated event object.
     const updatedEvent = {
-      ...initialData, // in edit mode, include other fields from initialData if needed
+      ...initialData, // In edit mode, include other fields from initialData if needed.
       title: eventName,
       startTime: updatedStartTime,
       endTime: updatedEndTime,
       description,
-      // Add other fields as needed.
+      price,
+      image,
+      game: selectedGameId, // store the selected catalogue id for the game.
+      // Participants might be set later or default to an empty string.
     };
-
-    // Call the onSubmit callback with the updated event data.
     if (onSubmit) {
       onSubmit(updatedEvent);
     }
-
-    // Close the modal.
     setIsModalOpen(false);
   };
 
   const handleDelete = () => {
     if (window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
       if (onDelete) {
-        onDelete(initialData);
+        onDelete(initialData.id);
       } else {
         console.log("Deleting event:", initialData);
       }
@@ -104,7 +137,6 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
             ✕
           </button>
 
-          {/* Modal Content */}
           <h2 className="text-2xl font-bold text-center mb-4">
             {initialData ? "Edit Event" : "Create Event"}
           </h2>
@@ -121,24 +153,20 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
               />
 
               <label className="block mt-2 mb-1 font-semibold">Start Date</label>
-              <div className="flex items-center border p-2 rounded">
-                <input 
-                  type="date" 
-                  className="w-full outline-none" 
-                  value={startDate} 
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
+              <input 
+                type="date" 
+                className="w-full border p-2 rounded" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)}
+              />
 
               <label className="block mt-2 mb-1 font-semibold">End Date</label>
-              <div className="flex items-center border p-2 rounded">
-                <input 
-                  type="date" 
-                  className="w-full outline-none" 
-                  value={endDate} 
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
+              <input 
+                type="date" 
+                className="w-full border p-2 rounded" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)}
+              />
 
               <label className="block mt-2 mb-1 font-semibold">Start Time</label>
               <input 
@@ -155,26 +183,70 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
                 value={endTime} 
                 onChange={(e) => setEndTime(e.target.value)}
               />
+
+              <label className="block mt-2 mb-1 font-semibold">Price</label>
+              <input 
+                type="text" 
+                className="w-full border p-2 rounded" 
+                placeholder="Enter price (e.g., $10)" 
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+              />
+
+              <label className="block mt-2 mb-1 font-semibold">Game (from Catalogue)</label>
+              <input 
+                type="text" 
+                className="w-full border p-2 rounded" 
+                placeholder="Type to search game..." 
+                value={gameQuery}
+                onChange={(e) => {
+                  setGameQuery(e.target.value);
+                  // Reset selectedGameId when the query changes.
+                  setSelectedGameId(null);
+                }}
+              />
+              {gameSuggestions.length > 0 && (
+                <ul className="border border-gray-300 mt-1 max-h-32 overflow-y-auto">
+                  {gameSuggestions.map((item) => (
+                    <li 
+                      key={item.id}
+                      className="p-2 hover:bg-gray-200 cursor-pointer"
+                      onClick={() => {
+                        setGameQuery(item.title);
+                        setSelectedGameId(item.id);
+                        setTimeout(() => setGameSuggestions([]), 100);
+                      }}
+                    >
+                      {item.title}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
-            {/* Right Side */}
+            {/* Right Side Inputs */}
             <div className="flex flex-col">
               <label className="block mb-1 font-semibold">Event Description</label>
               <textarea 
                 className="w-full border p-2 rounded h-32" 
+                placeholder="Enter event description..."
                 value={description} 
                 onChange={(e) => setDescription(e.target.value)}
               ></textarea>
 
-              <label className="block mt-2 mb-1 font-semibold">Event Image</label>
-              <div className="w-full h-32 border flex justify-center items-center cursor-pointer">
-                <span className="text-gray-500">Add Image</span>
-              </div>
+              <label className="block mt-2 mb-1 font-semibold">Event Image URL</label>
+              <input 
+                type="text" 
+                className="w-full border p-2 rounded" 
+                placeholder="Enter image URL"
+                value={image}
+                onChange={(e) => setImage(e.target.value)}
+              />
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="text-right mt-4 flex justify-end gap-2">
+          <div className="flex justify-end gap-2 mt-4">
             {initialData && (
               <button 
                 onClick={handleDelete}

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function CreateBoardGameModal({ setIsModalOpen, onAddBoardGame }) {
+export default function CreateBoardGameModal({ setIsModalOpen, onAddBoardGame, fetchBoardGames }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [publisher, setPublisher] = useState("");
@@ -60,18 +60,22 @@ export default function CreateBoardGameModal({ setIsModalOpen, onAddBoardGame })
       const xmlDoc = parser.parseFromString(text, "text/xml");
       const boardgameNode = xmlDoc.getElementsByTagName("boardgame")[0];
       if (boardgameNode) {
-        // Title
-        const nameNode = boardgameNode.getElementsByTagName("name")[0];
-        const newTitle = nameNode ? nameNode.textContent : "";
+        const nameNodes = boardgameNode.getElementsByTagName("name");
+        let newTitle = "";
         
+        for (let i = 0; i < nameNodes.length; i++) {
+            if (nameNodes[i].getAttribute("primary") === "true") {
+                newTitle = nameNodes[i].textContent;
+                break; // Stop looping once found
+            }
+        }
+        // If no primary name is found, fallback to the first name
+        if (!newTitle && nameNodes.length > 0) {
+            newTitle = nameNodes[0].textContent;
+        }
         // Publisher(s)
         const publisherNodes = boardgameNode.getElementsByTagName("boardgamepublisher");
-        let publishers = [];
-        for (let i = 0; i < publisherNodes.length; i++) {
-          publishers.push(publisherNodes[i].textContent);
-        }
-        const newPublisher = publishers.join(", ");
-        
+        const newPublisher = publisherNodes.length > 0 ? publisherNodes[0].textContent : "";
         // Description
         const descNode = boardgameNode.getElementsByTagName("description")[0];
         const newDescription = descNode ? descNode.textContent : "";
@@ -140,17 +144,16 @@ export default function CreateBoardGameModal({ setIsModalOpen, onAddBoardGame })
   const handleSubmit = (e) => {
     e.preventDefault();
     const newBoardGame = {
-      id: Date.now(),
-      title,
-      description,
-      publisher,
-      releaseYear,
+      title:title,
+      description:description,
+      publisher:publisher,
+      yearpublished:releaseYear,
       image: image || "https://picsum.photos/200/300",
-      players,
-      difficulty,
-      duration,
+      players:players,
+      difficulty:difficulty,
+      duration:duration,
     };
-    onAddBoardGame(newBoardGame);
+    onAddBoardGame(newBoardGame)
     setIsModalOpen(false);
   };
 

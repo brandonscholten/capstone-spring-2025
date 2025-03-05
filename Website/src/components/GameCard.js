@@ -56,7 +56,7 @@ import CreateGameModal from "./createGame";
 // Async function to verify the game password via an API call.
 async function verifyGamePassword(gameId, password) {
   try {
-    const response = await fetch("/api/verifyGamePassword", {
+    const response = await fetch("http://localhost:5000/games/verify-password", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -64,12 +64,10 @@ async function verifyGamePassword(gameId, password) {
       body: JSON.stringify({ gameId, password }),
     });
     const data = await response.json();
-    return true
-    //return data.isValid;
+    return data.isValid;
   } catch (error) {
-    return true
-    // console.error("Error verifying password:", error);
-    // throw error;
+    console.error("Error verifying password:", error);
+    throw error;
   }
 }
 
@@ -132,7 +130,7 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
 
   
 
-  export default function GameCard({ game }) {
+  export default function GameCard({ game, resetGames }) {
     const [isRSVPModalOpen, setRSVPModalOpen] = useState(false);
     const [isEditModalOpen, setEditModalOpen] = useState(false);
     const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
@@ -183,7 +181,7 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
                   <span className="font-semibold text-gray-700">Time:</span> {timeDisplay}
                 </p>
                 <p>
-                  <span className="font-semibold text-gray-700">Participants:</span> {game.participants.join(", ")}
+                  <span className="font-semibold text-gray-700">Participants:</span> {game.participants ? game.participants.join(", ") : game.organizer}
                 </p>
               </div>
               <button
@@ -212,9 +210,40 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
             initialData={game}
             onSubmit={(updatedGame) => {
               // Send an update call to the backend with updatedGame.
-              console.log("Updating game:", updatedGame);
+              console.log(updatedGame)
+              fetch(`http://localhost:5000/games/${updatedGame.id}`, {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(updatedGame),
+              })
+                .then((res) => res.json())
+                .then(()=> {resetGames()})
+                .catch((error) => console.error("Error creating game:", error));
               setEditModalOpen(false);
             }}
+            //FIX THIS IT'S INSECURE. ANYONE CAN HIT THIS API AND DELETE WITHOUT A PASSWORD
+            //
+            //
+            //
+            //
+            onDelete={
+              // Delete the game by id.
+              (gameId) => {
+                fetch(`http://localhost:5000/games`, {
+                  method: "DELETE",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ id: gameId }),
+                })
+                  .then((res) => res.json())
+                  .then(()=> {resetGames()})
+                  .catch((error) => console.error("Error deleting game:", error));
+                setEditModalOpen(false);
+              }
+            }
           />
         )}
         {isPasswordModalOpen && (

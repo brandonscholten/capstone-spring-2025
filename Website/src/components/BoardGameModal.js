@@ -18,13 +18,6 @@ export default function BoardGameModal({ game, onClose }) {
           className="w-full h-60 object-contain rounded mb-4"
         />
         <h2 className="text-2xl font-bold mb-4">{game.title}</h2>
-        <div
-          className="mb-4 text-base text-gray-800"
-          style={{ maxHeight: "300px" }} // Limit height, making description scrollable
-          dangerouslySetInnerHTML={{
-            __html: DOMPurify.sanitize(game.description),
-          }}
-        />
         <p className="text-sm text-gray-600">Publisher: {game.publisher}</p>
         <p className="text-sm text-gray-600">Release Year: {game.releaseYear}</p>
         <p className="text-sm text-gray-600">Players: {game.players}</p>
@@ -32,6 +25,11 @@ export default function BoardGameModal({ game, onClose }) {
         <p className="text-sm text-gray-600">
           Time to Play: {game.duration} {game.duration.includes("mins") ? "" : "mins"}
         </p>
+        <br></br>
+        <div 
+        className="h-40 mb-2 text-sm text-gray-800 scroll-hover"
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(game.description) }}
+      />
         <button
           onClick={onClose}
           className="mt-4 px-4 py-2 bg-[#942E2A] text-white rounded"
@@ -39,6 +37,6 @@ export default function BoardGameModal({ game, onClose }) {
           Close
         </button>
       </div>
-    </div>
+      </div>
   );
 }
