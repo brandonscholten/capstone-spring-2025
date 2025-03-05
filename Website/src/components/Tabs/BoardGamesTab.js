@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import BoardGameCard from "./BoardGameCard";
-import CreateBoardGameModal from "./CreateBoardGameModal";
-import BoardGameModal from "./BoardGameModal";
+import BoardGameCard from "../BoardGameCard";
+import CreateBoardGameModal from "../CreateBoardGameModal";
+import BoardGameModal from "../BoardGameModal";
 
 
 // Helper function to check if a number is within a range string (e.g., "2-6" or "60-90")
@@ -29,11 +29,6 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
   const [filterDifficulty, setFilterDifficulty] = useState("");
   const [filterDuration, setFilterDuration] = useState("");
   
-
-  useEffect(() => {
-    fetchBoardGames();
-  }, []);
-
   useEffect(() => {}, [boardGames]);
 
   // Apply filters

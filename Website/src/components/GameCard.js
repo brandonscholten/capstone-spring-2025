@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import RSVPModal from "./RSVPModal";
-import CreateGameModal from "./createGame";
+import CreateGameModal from "./CreateGameModal";
 
 
   // Helper function to parse a date string in "YYYYMMDDTHHmmssZ" format.

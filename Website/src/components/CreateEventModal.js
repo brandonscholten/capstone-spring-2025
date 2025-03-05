@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-
+import api from "../api/axiosClient";
 // Helper function to parse a date string in "YYYYMMDDTHHmmssZ" format.
 function parseEventDate(dateStr) {
   const formatted = dateStr.replace(
@@ -43,6 +43,12 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
   const [price, setPrice] = useState(initialData?.price || "");
   const [image, setImage] = useState(initialData?.image || "");
   
+  // Flag to track if end date has been manually modified.
+  const [hasEndDateBeenModified, setHasEndDateBeenModified] = useState(!!initialData?.endTime);
+
+  // State for recurring event.
+  const [isRecurring, setIsRecurring] = useState(initialData?.isRecurring || false);
+
   // State for "Game" auto-suggest.
   const [gameQuery, setGameQuery] = useState("");
   const [selectedGameId, setSelectedGameId] = useState(initialData?.game || null);
@@ -51,13 +57,11 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
 
   // Fetch catalogue items once when the modal mounts.
   useEffect(() => {
-    fetch("http://localhost:5000/catalogue/titles")
-      .then((res) => res.json())
-      .then((data) => {
-        setCatalogueItems(data);
-      })
-      .catch((err) => console.error("Error fetching catalogue:", err));
+    api.get("/catalogue/titles")
+      .then((response) => setCatalogueItems(response.data))
+      .catch((error) => console.error("Error fetching catalogue:", error));
   }, []);
+  
 
   // Update game suggestions whenever gameQuery or catalogueItems change.
   useEffect(() => {
@@ -83,9 +87,23 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
       setPrice(initialData.price || "");
       setImage(initialData.image || "");
       setSelectedGameId(initialData.game || null);
-      // Optionally set gameQuery from the catalogue if available.
+      setIsRecurring(initialData.isRecurring || false);
     }
   }, [initialData, initialStartDate, initialEndDate, initialStartTime, initialEndTime]);
+
+  // When the start date changes, auto-fill the end date if the user hasn't modified it.
+  const handleStartDateChange = (e) => {
+    const newStartDate = e.target.value;
+    setStartDate(newStartDate);
+    if (!hasEndDateBeenModified) {
+      setEndDate(newStartDate);
+    }
+  };
+
+  const handleEndDateChange = (e) => {
+    setEndDate(e.target.value);
+    setHasEndDateBeenModified(true);
+  };
 
   // Handle form submission.
   const handleSubmit = () => {
@@ -102,9 +120,11 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
       description,
       price,
       image,
+      recurring: isRecurring,
       game: selectedGameId, // store the selected catalogue id for the game.
-      // Participants might be set later or default to an empty string.
+      isRecurring, // recurring event flag.
     };
+
     if (onSubmit) {
       onSubmit(updatedEvent);
     }
@@ -157,7 +177,7 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
                 type="date" 
                 className="w-full border p-2 rounded" 
                 value={startDate} 
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={handleStartDateChange}
               />
 
               <label className="block mt-2 mb-1 font-semibold">End Date</label>
@@ -165,7 +185,7 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
                 type="date" 
                 className="w-full border p-2 rounded" 
                 value={endDate} 
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={handleEndDateChange}
               />
 
               <label className="block mt-2 mb-1 font-semibold">Start Time</label>
@@ -201,7 +221,6 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
                 value={gameQuery}
                 onChange={(e) => {
                   setGameQuery(e.target.value);
-                  // Reset selectedGameId when the query changes.
                   setSelectedGameId(null);
                 }}
               />
@@ -242,6 +261,17 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
                 value={image}
                 onChange={(e) => setImage(e.target.value)}
               />
+
+              <label className="block mt-2 mb-1 font-semibold">Recurring Event</label>
+              <div className="flex items-center">
+                <input 
+                  type="checkbox" 
+                  checked={isRecurring} 
+                  onChange={(e) => setIsRecurring(e.target.checked)} 
+                  className="mr-2"
+                />
+                <span>Occurs every week</span>
+              </div>
             </div>
           </div>
 

@@ -4,7 +4,7 @@ from flask_migrate import Migrate
 from flask_cors import CORS
 import requests
 import bcrypt
-from datetime import datetime
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -64,6 +64,7 @@ class Event(db.Model):
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
     price = db.Column(db.String(50), nullable=True)
+    recurring = db.Column(db.Boolean, nullable=False)
     # Link to a catalogue game (board game)
     game_id = db.Column(db.Integer, db.ForeignKey('catalogue.id'), nullable=True)
     game = db.relationship('Catalogue', backref=db.backref('events', lazy=True))
@@ -111,7 +112,6 @@ def get_catalogue():
         })
     return jsonify(result)
 
-
 @app.route('/catalogue', methods=['POST'])
 def add_catalogue_game():
     data = request.get_json()
@@ -139,7 +139,6 @@ def get_catalogue_titles():
     games = Catalogue.query.with_entities(Catalogue.id, Catalogue.title).all()
     result = [{"id": game.id, "title": game.title} for game in games]
     return jsonify(result)
-
 
 # ----- User Endpoints -----
 @app.route('/users', methods=['POST'])
@@ -194,18 +193,17 @@ def create_event():
         end_time=datetime.fromisoformat(data.get("endTime")),
         price=data.get("price"),
         game_id=data.get("game"),
-        participants=data.get("participants")
+        participants=data.get("participants"),
+        recurring=data.get("recurring", False)
     )
     db.session.add(new_event)
     db.session.commit()
     return jsonify({"message": "Event created", "id": new_event.id}), 201
 
-
 @app.route('/events/<int:event_id>', methods=['PUT'])
 def update_event(event_id):
     data = request.get_json()
     event = Event.query.get(event_id)
-
     if not event:
         return jsonify({"error": "Event not found"}), 404
 
@@ -218,6 +216,7 @@ def update_event(event_id):
     event.price = data.get("price", event.price)
     event.game_id = data.get("game", event.game_id)
     event.participants = data.get("participants", event.participants)
+    event.recurring = data.get("recurring", event.recurring)
 
     db.session.commit()
     return jsonify({"message": "Event updated successfully", "id": event.id}), 200
@@ -238,9 +237,13 @@ def get_games():
     games = Game.query.all()
     result = []
     for game in games:
+        title = game.title
+        if not title and game.catalogue_id:
+            catalogue_game = Catalogue.query.get(game.catalogue_id)
+            title = catalogue_game.title if catalogue_game else None
         result.append({
             "id": game.id,
-            "title": game.title,
+            "title": title,
             "organizer": game.organizer,
             "startTime": game.start_time.isoformat(),
             "endTime": game.end_time.isoformat(),
@@ -283,7 +286,6 @@ def delete_game_entry():
         db.session.commit()
         return jsonify({"message": "Game deleted"}), 200
     return jsonify({"error": "Game not found"}), 404
-
 
 @app.route('/games/<int:game_id>', methods=['PUT'])
 def update_game(game_id):
@@ -363,8 +365,33 @@ def bgg_boardgame(game_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+#############################################
+#         CLEANUP ENDPOINT                #
+#############################################
+@app.route('/cleanup', methods=['POST'])
+def cleanup():
+    now = datetime.utcnow()
+    
+    # Process Events.
+    events = Event.query.all()
+    for event in events:
+        if event.end_time < now:
+            if event.recurring:
+                # If event is recurring, update start and end times until they are in the future.
+                while event.end_time < now:
+                    event.start_time += timedelta(weeks=1)
+                    event.end_time += timedelta(weeks=1)
+            else:
+                db.session.delete(event)
+    
+    # Process Games (non-recurring; simply delete if past end_time).
+    games = Game.query.all()
+    for game in games:
+        if game.end_time < now:
+            db.session.delete(game)
+    
+    db.session.commit()
+    return jsonify({"message": "Cleanup completed"}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
-
