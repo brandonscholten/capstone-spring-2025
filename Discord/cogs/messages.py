@@ -16,11 +16,12 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-
+import requests
 
 class Messages(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.tree = app_commands.CommandTree(bot)
 
     @app_commands.command(name="list_events", description="Creates an event and allows users to RSVP")
     async def listevents(self, interaction: discord.Interaction):
@@ -31,12 +32,6 @@ class Messages(commands.Cog):
 
     @app_commands.command(name="list_games", description="Lists the current game collection of Board & Bevy")
     async def listGames(self, interaction: discord.Interaction):
-        #Place holder data
-        games= [
-            "Catan",
-            "MtG",
-            "Dont forget to implement Birthdays!"
-        ]
 
         #Call API HERE and collect titles!
 
@@ -52,8 +47,12 @@ class Messages(commands.Cog):
     
     
     
-    @app_commands.command(name="create_event", description="Creates an event and allows users to RSVP")
+    #@app_commands.command(name="create_event", description="Creates an event and allows users to RSVP")
     #@app_commands.describe(eventName="the name of the event")
+    @tree.command(
+            name="createEvent",
+            description="Creates an event and allows users to RSVP",
+    )
     async def createEvent(self, interaction: discord.Interaction):
         #process the event with the API, and make response based on the code returned
 
