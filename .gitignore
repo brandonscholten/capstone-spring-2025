@@ -7,3 +7,5 @@ env
 Discord/__pycache__/*
 .vscode/*
 .vscode/settings.json
+.env
+.env
