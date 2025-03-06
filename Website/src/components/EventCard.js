@@ -129,6 +129,8 @@ export default function EventCard({ event, isValid, resetEvents }) {
           isOpen={isRSVPModalOpen}
           onClose={() => setRSVPModalOpen(false)}
           eventData={event}
+          type={"event"}
+          refresh={resetEvents}
         />
       )}
       {isEditModalOpen && (

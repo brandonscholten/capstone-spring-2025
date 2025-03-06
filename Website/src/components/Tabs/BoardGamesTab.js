@@ -52,11 +52,6 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
 
   return (
     <div className="w-full max-w-6xl bg-white shadow-md rounded-lg p-6">
-      {isAdmin && (
-        <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-[#942E2A] text-white rounded-lg mb-4">
-          Create Board Game
-        </button>
-      )}
       <div className="mb-4">
         <h3 className="text-lg font-semibold mb-2">Filter Board Games</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

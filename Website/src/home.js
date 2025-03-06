@@ -75,12 +75,13 @@ export default function Home() {
   // Check for token and simulate admin check.
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      setIsTokenValid(true);
-      if (token === "admin") {
-        setIsAdmin(true);
-      }
-    }
+    setIsAdmin(true);
+    // if (token) {
+    //   setIsTokenValid(true);
+    //   if (token === "admin") {
+    //     setIsAdmin(true);
+    //   }
+    // }
   }, []);
 
   // Fetch events from the backend
@@ -151,7 +152,7 @@ export default function Home() {
                     </button>
           )}
 
-          {activeTab === "events" && isTokenValid && (
+          {activeTab === "events" && isAdmin && (
                     <button
                       onClick={() => setIsEventModalOpen(true)}
                       className="px-4 py-2 bg-[#942E2A] text-white rounded-lg"
@@ -160,7 +161,7 @@ export default function Home() {
                     </button>
           )}
 
-          {activeTab === "boardgames" && isTokenValid && (
+          {activeTab === "boardgames" && isAdmin && (
                     <button
                       onClick={() => setIsBoardGameModalOpen(true)}
                       className="px-4 py-2 bg-[#942E2A] text-white rounded-lg"

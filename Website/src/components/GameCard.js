@@ -181,7 +181,7 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
                   <span className="font-semibold text-gray-700">Time:</span> {timeDisplay}
                 </p>
                 <p>
-                  <span className="font-semibold text-gray-700">Participants:</span> {game.participants ? game.participants.join(", ") : game.organizer}
+                  <span className="font-semibold text-gray-700">Participants:</span> {game.participants ? game.organizer + ", " + game.participants : game.organizer}
                 </p>
               </div>
               <button
@@ -202,6 +202,8 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
             isOpen={isRSVPModalOpen}
             onClose={() => setRSVPModalOpen(false)}
             eventData={game} // Passing game details to the modal.
+            type={"game"}
+            refresh={resetGames} // Refresh the games list after RSVP.
           />
         )}
         {isEditModalOpen && (

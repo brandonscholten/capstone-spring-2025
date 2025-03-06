@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-
+import api from "../api/axiosClient";
 // Helper to detect Apple devices.
 function isAppleDevice() {
   return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
 }
 
-export default function RSVPModal({ isOpen, onClose, eventData }) {
+export default function RSVPModal({ isOpen, onClose, eventData, type, refresh}) {
   const [step, setStep] = useState(1);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
@@ -27,13 +27,17 @@ export default function RSVPModal({ isOpen, onClose, eventData }) {
 
   const handleSubmit = () => {
     const formData = { 
-      eventId: eventData.id, 
-      eventTitle: eventData.title, 
-      name, 
-      contact 
+      id: eventData.id, 
+      type: type,
+      participant: name, 
     };
-    console.log(JSON.stringify(formData));
-    // API call would be made here.
+
+    console.log(formData)
+
+    api.post("/participants/add", formData)
+    .then(() => refresh()) // Re-fetch board games after successful post
+    .catch((error) => console.error("Error creating event:", error));
+
     onClose(); // Optionally close the modal after submission.
   };
 

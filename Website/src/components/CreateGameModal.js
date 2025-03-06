@@ -212,8 +212,9 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
       <div
         className="fixed inset-0 flex justify-center items-center z-50"
         style={{ backgroundColor: "rgba(0, 0, 0, 0.85)" }}
+        onClick={() => setIsModalOpen(false)}
       >
-        <div className="bg-white p-6 rounded-lg shadow-lg w-[600px] relative">
+        <div className="bg-white p-6 rounded-lg shadow-lg w-[600px] relative " onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => setIsModalOpen(false)}
             className="absolute top-2 right-2 text-gray-600 hover:text-black"

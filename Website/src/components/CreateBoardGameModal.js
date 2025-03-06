@@ -159,7 +159,7 @@ export default function CreateBoardGameModal({ setIsModalOpen, onAddBoardGame, f
 
   return (
     <div className="fixed inset-0 flex items-center justify-center" style={{backgroundColor: "rgba(0, 0, 0, 0.85)"}} onClick={() => setIsModalOpen(false)} >
-      <div className="bg-white p-6 rounded-lg shadow-lg w-120" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white p-6 rounded-lg shadow-lg w-120 h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-xl font-semibold mb-4">Create Board Game</h2>
         <form onSubmit={handleSubmit}>
           <div className="mb-4 relative">
