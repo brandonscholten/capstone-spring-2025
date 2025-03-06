@@ -10,7 +10,7 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Update the connection string with your actual MySQL credentials and database name
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:0000@localhost:3306/botnbevy_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:BOTNBEVY@localhost:3306/botnbevy_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -333,6 +333,43 @@ def verify_game_password():
         return jsonify({"isValid": True}), 200
     else:
         return jsonify({"isValid": False}), 401
+
+
+
+@app.route('/participants/add', methods=['POST'])
+def add_participant():
+    data = request.get_json()
+    model_type = data.get("type")
+    participant = data.get("participant")
+    obj_id = data.get("id")
+    
+    print(model_type,participant,obj_id)
+    if not model_type or model_type not in ['event', 'game']:
+        return jsonify({"error": "Invalid type. Must be 'event' or 'game'."}), 400
+    if not participant:
+        return jsonify({"error": "Missing participant."}), 400
+    if not obj_id:
+        return jsonify({"error": "Missing id."}), 400
+
+    # Determine which model to update
+    if model_type == 'event':
+        obj = Event.query.get(obj_id)
+        if not obj:
+            return jsonify({"error": "Event not found"}), 404
+    else:  # model_type == 'game'
+        obj = Game.query.get(obj_id)
+        if not obj:
+            return jsonify({"error": "Game not found"}), 404
+
+    # Append the new participant to the existing list
+    if obj.participants:
+        obj.participants = obj.participants + ", " + participant
+    else:
+        obj.participants = participant
+
+    db.session.commit()
+    return jsonify({"message": "Participant added", "id": obj_id}), 200
+
 
 # ----- BGG API Proxy Endpoints -----
 @app.route('/bgg/search', methods=['GET'])
