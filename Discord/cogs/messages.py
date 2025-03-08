@@ -17,6 +17,8 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import requests
+from dotenv import load_dotenv, dotenv_values
+import os
 
 class Messages(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -59,8 +61,10 @@ class Messages(commands.Cog):
     @app_commands.describe(event_name="the name of the event")
     async def createEvent(self, interaction: discord.Interaction, event_name: str):
         usersID = interaction.user.id
+        usersName = interaction.user.name
+        privateRoomRequest = False
 
-        await interaction.response.pong()
+        #await interaction.response.pong()
         
 
         #Send a message to create a thread on (have to without the server being Nitro boosted)
@@ -85,15 +89,38 @@ class Messages(commands.Cog):
         try:
             reaction, user = await self.bot.wait_for('reaction_add', timeout=60)
             if str(reaction.emoji) == "👍":
-                await thread.send("If you would like to book the backroom for this event, please visit one of the two links below:\n HALF ROOM \n FULL ROOM")
-            #elif str(reaction.emoji) == "👎":
-                #do nothing or still deciding on what to do
+                #await thread.send("If you would like to book the backroom for this event, please visit one of the two links below:\n HALF ROOM \n FULL ROOM")
+                privateRoomRequest = True
+            elif str(reaction.emoji) == "👎":
+                privateRoomRequest = False
         except TimeoutError:
             await thread.send("Time out awaiting for a reaction, please try again")
         
         await interaction.followup.send("Thank you for scheduling your event, the thread is now locked!")
 
         await thread.edit(archived=True, locked=True)
+
+
+        #
+        #  DM for event approval
+        #
+
+        #We need to DM Coty with the request, so take it here and send him a DM with all the event details!
+        #TODO: REPLACE THE USER KEY IT PULLS WITH COTY'S, CURRENTLY USING A TEST ONE (MINE, ELLIOTT'S)
+        eventApprovalUser = await self.bot.fetch_user(os.getenv("TEST_DISCORD_USER_ID"))
+
+        #Build the DM message for approvals:
+        approvalMesage = f' The user {usersName} is requesting the following game, details are below\n'
+        approvalMesage += f'* Private Room Requested?: {privateRoomRequest}'
+
+        eventApprovalMessage = await eventApprovalUser.send(approvalMesage)
+
+        #Now add the interactions to the event
+        await eventApprovalMessage.add_reaction('👍')
+        await eventApprovalMessage.add_reaction('👎')
+
+
+        #Make a function to handle a check to ensure the correct DM id is used for interaction
 
     #@app_commands.command()
     #async def 
