@@ -9,4 +9,5 @@ Discord/__pycache__/*
 .vscode/settings.json
 .env
 .env
+Discord/cogs/__pycache__
 Discord/cogs/__pycache__/messages.cpython-312.pyc
