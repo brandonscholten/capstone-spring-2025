@@ -19,6 +19,7 @@ from discord import app_commands
 import requests
 from dotenv import load_dotenv, dotenv_values
 import os
+import typing
 
 class Messages(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -59,10 +60,16 @@ class Messages(commands.Cog):
     
     @app_commands.command(name="create_event", description="Creates an event and allows users to RSVP")
     @app_commands.describe(event_name="the name of the event")
-    async def createEvent(self, interaction: discord.Interaction, event_name: str):
+    @app_commands.describe(event_date="date of the event (format: mm/dd/yyy)")
+    @app_commands.describe(event_time="date of the event (format: HH:MM AM/PM)")
+    async def createEvent(self, interaction: discord.Interaction, event_name: str, event_date: typing.Optional[str], event_time: typing.Optional[str]):
         usersID = interaction.user.id
         usersName = interaction.user.name
         privateRoomRequest = False
+        event_date = event_date
+        event_time = event_time
+
+        print(event_time)
 
         #await interaction.response.pong()
         
@@ -111,6 +118,8 @@ class Messages(commands.Cog):
 
         #Build the DM message for approvals:
         approvalMesage = f' The user {usersName} is requesting the following game, details are below\n'
+        #approvalMessage += f'* Event Name: {event_name}'
+
         approvalMesage += f'* Private Room Requested?: {privateRoomRequest}'
 
         eventApprovalMessage = await eventApprovalUser.send(approvalMesage)
