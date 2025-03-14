@@ -65,6 +65,7 @@ class Messages(commands.Cog):
     async def createEvent(self, interaction: discord.Interaction, event_name: str, event_date: typing.Optional[str], event_time: typing.Optional[str]):
         usersID = interaction.user.id
         usersName = interaction.user.name
+        usersObject = await self.bot.fetch_user(usersID)
         privateRoomRequest = False
         event_date = event_date
         event_time = event_time
@@ -142,6 +143,8 @@ class Messages(commands.Cog):
            reaction, channel = await self.bot.wait_for('reaction_add', check=check)
            if str(reaction.emoji) == '👍':
             print("Thumbs up!!!")
+            #Now dm the requester to tell them it has been approved
+            await usersObject.send("Your request has been approved!")
         except Exception as e:
             print(f'ERROR: {e}')
 
