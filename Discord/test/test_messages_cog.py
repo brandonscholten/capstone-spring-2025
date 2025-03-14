@@ -17,6 +17,11 @@ import discord.ext.test as dpytest
 @pytest.mark.asyncio
 async def test_create_event(setupBotTest):
     #Set up our test here
-    await dpytest.message("Hello!")
+    sentMsg = await dpytest.message("\\create_event name: Evnt")
+
+    #print(sentMsg.id)
+
+    #Now assert the command message contents and try to check for a thread created
+    #print(dpytest.peek(sentMsg.id))
 
 

@@ -69,7 +69,7 @@ class Messages(commands.Cog):
         event_date = event_date
         event_time = event_time
 
-        print(event_time)
+        #print(event_time)
 
         #await interaction.response.pong()
         
@@ -100,6 +100,9 @@ class Messages(commands.Cog):
                 privateRoomRequest = True
             elif str(reaction.emoji) == "👎":
                 privateRoomRequest = False
+
+
+            #
         except TimeoutError:
             await thread.send("Time out awaiting for a reaction, please try again")
         
@@ -114,7 +117,7 @@ class Messages(commands.Cog):
 
         #We need to DM Coty with the request, so take it here and send him a DM with all the event details!
         #TODO: REPLACE THE USER KEY IT PULLS WITH COTY'S, CURRENTLY USING A TEST ONE (MINE, ELLIOTT'S)
-        eventApprovalUser = await self.bot.fetch_user(os.getenv("TEST_DISCORD_USER_ID"))
+        eventApprovalChanel = await self.bot.fetch_channel(os.getenv("TEST_ADMIN_CHANNEL"))
 
         #Build the DM message for approvals:
         approvalMesage = f' The user {usersName} is requesting the following game, details are below\n'
@@ -122,22 +125,31 @@ class Messages(commands.Cog):
 
         approvalMesage += f'* Private Room Requested?: {privateRoomRequest}'
 
-        eventApprovalMessage = await eventApprovalUser.send(approvalMesage)
+        eventApprovalMessage = await eventApprovalChanel.send(approvalMesage)
 
         #Now add the interactions to the event
         await eventApprovalMessage.add_reaction('👍')
         await eventApprovalMessage.add_reaction('👎')
 
+        def check(reaction, channel):
+                print("doing the check!")
+                print(f'Channel: {channel}')
+                return reaction.message.id == eventApprovalMessage.id
+
+        try:
+           
+
+           reaction, channel = await self.bot.wait_for('reaction_add', check=check)
+           if str(reaction.emoji) == '👍':
+            print("Thumbs up!!!")
+        except Exception as e:
+            print(f'ERROR: {e}')
 
         #Make a function to handle a check to ensure the correct DM id is used for interaction
 
     #@app_commands.command()
     #async def 
         
-
-    
-
-
 
 
 async def setup(bot):

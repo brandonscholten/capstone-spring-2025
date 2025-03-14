@@ -59,7 +59,11 @@ async def setupBotTest():
     await bot._async_setup_hook()
     dpytest.configure(bot)
 
-    return bot
+    yield bot
+
+    #Tear down
+    await dpytest.empty_queue()
+
 
 
 
