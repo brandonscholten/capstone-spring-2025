@@ -1,7 +1,7 @@
 import GameCard from "../GameCard";
 import { useState } from "react";
 
-export default function BoardGamesTab({ sortedGames, fetchGames }) {
+export default function GamesTab({ sortedGames, fetchGames, isAdmin }) {
   const [searchQuery, setSearchQuery] = useState("");
     return (
         <div>
@@ -26,7 +26,7 @@ export default function BoardGamesTab({ sortedGames, fetchGames }) {
             game.title.toLowerCase().includes(searchQuery.toLowerCase())
             )
             .map((game) => (
-            <GameCard game={game} key={game.id} resetGames={fetchGames}/>
+            <GameCard game={game} key={game.id} resetGames={fetchGames} isAdmin={isAdmin}/>
             ))}
         </div>
     )

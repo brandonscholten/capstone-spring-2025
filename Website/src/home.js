@@ -173,9 +173,9 @@ export default function Home() {
 
         {/* Tab Content */}
         {activeTab === "events" ? (
-            <EventsTab events={events} isTokenValid={isAdmin} fetchEvents={fetchEvents}/>
+            <EventsTab events={events} isAdmin={isAdmin} fetchEvents={fetchEvents}/>
         ) : activeTab === "games" ? (
-          <GamesTab sortedGames={sortedGames} fetchGames={fetchGames}/>
+          <GamesTab sortedGames={sortedGames} fetchGames={fetchGames} isAdmin={isAdmin}/>
         ) : activeTab === "boardgames" ? (
           <BoardGamesTab isAdmin={isAdmin} boardGames={boardGames} fetchBoardGames={fetchBoardGames} onAddBoardGame={(newBoardGame) => {addBoardGame(newBoardGame);}}/>
         ) : null}

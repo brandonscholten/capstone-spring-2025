@@ -97,6 +97,7 @@ export default function EventCard({ event, isValid, resetEvents }) {
             ✏️
           </button>
         )}
+        {event.image && (
         <img
           src={event.image}
           alt={event.title}
@@ -104,6 +105,7 @@ export default function EventCard({ event, isValid, resetEvents }) {
             ${hoveredEvent === event.id ? "h-48" : "h-40"}
           `}
         />
+        )}
         <div className="mt-4 text-center w-full">
           <h2 className="text-xl font-bold mb-2">{event.title}</h2>
           <p className="text-gray-700 font-semibold">Game: {event.game}</p>
