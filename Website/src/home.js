@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import CreateGameModal from "./createGame";
 
 const mockEvents = [
@@ -113,6 +113,8 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [hoveredEvent, setHoveredEvent] = useState(null);
   const [hoverTimeout, setHoverTimeout] = useState(null);
+  const [visibleCards, setVisibleCards] = useState([]);
+  const cardRefs = useRef([]);
 
   const handleMouseEnter = (eventId) => {
     const timeout = setTimeout(() => {
@@ -141,6 +143,54 @@ export default function Home() {
     if (sortBy === "time") return a.time.localeCompare(b.time);
     return a.title.localeCompare(b.title);
   });
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const cardId = entry.target.getAttribute("data-id");
+          
+          // If card enters viewport, add to visibleCards
+          // If card exits viewport, remove from visibleCards
+          setVisibleCards((prev) => {
+            if (entry.isIntersecting) {
+              console.log("Card entered viewport:", cardId);
+              return [...new Set([...prev, cardId])];
+            } else {
+              console.log("Card exited viewport:", cardId);
+              return prev.filter(id => id !== cardId);
+            }
+          });
+        });
+      },
+      { threshold: 0.3 } // Lower threshold to detect cards earlier
+    );
+  
+    // Copy the current refs to a local variable
+    const currentCardRefs = [...cardRefs.current];
+  
+    console.log("Current cardRefs before observing:", currentCardRefs);
+  
+    currentCardRefs.forEach((card) => {
+      if (card) observer.observe(card);
+    });
+  
+    return () => {
+      currentCardRefs.forEach((card) => {
+        if (card) {
+          console.log("Unobserving card:", card.getAttribute("data-id"));
+          observer.unobserve(card);
+        }
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log("visibleCards state:", visibleCards);
+    // Check if any cards should have the flip class
+    const flippedCards = mockEvents.filter(event => visibleCards.includes(event.id.toString()));
+    console.log("Cards that should be flipped:", flippedCards.map(e => e.id));
+  }, [visibleCards]);
 
   return (
     <div className="flex justify-center min-h-screen bg-gray-100 p-4 relative">
@@ -184,8 +234,8 @@ export default function Home() {
         {/* Events Tab */}
         {activeTab === "events" ? (
 
-          <div className="w-full max-w-4xl gradient-bg shadow-md rounded-lg p-6">
-            <div className="grid bg-white grid-cols-3 gap-6">
+          /*<div className="w-full max-w-4xl gradient-bg shadow-md rounded-lg p-6">
+            <div className="grid bg-white grid-cols-2 gap-6 overflow-hidden">
           {mockEvents.map((event) => (
             <div
               key={event.id}
@@ -193,6 +243,7 @@ export default function Home() {
               onMouseLeave={handleMouseLeave}
               className={`mx-auto relative transition-all duration-300 rounded-lg shadow-lg p-4 flex flex-col items-center overflow-hidden border border-gray-200 
                 ${hoveredEvent === event.id ? "w-[20vw] scale-105 transform -translate-x-5" : "w-[17vw] scale-95"}
+                max-w-[12vw]
               `}
             >
               <img
@@ -224,7 +275,51 @@ export default function Home() {
 
           </div>
           </div>
-        ) : (
+        ) */
+          <div className="w-full max-w-4xl gradient-bg shadow-md rounded-lg p-6">
+      <div className="grid bg-white grid-cols-2 gap-6 overflow-hidden">
+        {mockEvents.map((event, index) => (
+          <div
+            key={event.id}
+            data-id={event.id}
+            ref={(el) => (cardRefs.current[index] = el)}
+            className={`container mx-auto relative transition-all duration-300 rounded-lg shadow-lg p-4 flex flex-col items-center overflow-hidden border border-gray-200 
+              `}
+          >
+            <div className={`card ${visibleCards.includes(event.id) ? "flip" : ""}`}>
+              {/* Front of the card */}
+              <div className="front">
+                <img
+                  src={event.image}
+                  alt={event.title}
+                  className="w-full h-full object-cover rounded-lg"
+                />
+              </div>
+
+              {/* Back of the card */}
+              <div className="back">
+                <div className="text-center w-full">
+                  <h2 className="text-xl font-bold mb-2">{event.title}</h2>
+                  <p className="text-gray-700 font-semibold">Game: {event.game}</p>
+                  <p className="text-gray-700 font-semibold">Date: {event.date}</p>
+                  <p className="text-gray-700 font-semibold">Time: {event.time}</p>
+                  <p className="text-gray-700 font-semibold">Price: {event.price}</p>
+                  <p className="text-gray-500 text-sm mt-2">
+                    {event.description.substring(0, 50)}...
+                  </p>
+                  <button className="relative mt-4 px-4 py-2 text-white rounded hover:scale-105 transition-all overflow-hidden group">
+                    <span className="relative z-10">RSVP</span>
+                    <span className="absolute inset-0 bg-[#942E2A]"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+        )
+          : (
           <div>
             <div className="mb-4 flex items-center">
               <label className="mr-2 font-semibold text-gray-700">Search by Title:</label>

@@ -99,3 +99,47 @@
   .group:hover .group-hover\:animate-gradient {
 	animation: gradient 3s ease forwards;
   }
+
+  .container {
+    width: 100%;
+    height: 400px;
+    perspective: 800px;
+  }
+  
+  .card {
+    height: 100%;
+    width: 100%;
+    position: relative;
+    transition: transform 1s ease-in-out;
+    transform-style: preserve-3d;
+  }
+  
+  .front,
+  .back {
+    height: 100%;
+    width: 100%;
+    border-radius: 1rem;
+    box-shadow: 0 0 5px 2px rgba(50, 50, 50, 0.25);
+    position: absolute;
+    backface-visibility: hidden;
+  }
+  
+  .front {
+    background-color: white;
+  }
+  
+  .back {
+    background-color: #3a3a3a;
+    transform: rotateY(180deg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+  }
+  
+ .card.flip {
+    transform: rotateY(180deg);
+  }
