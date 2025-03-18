@@ -14,7 +14,6 @@ export default function Home() {
   const [isGameModalOpen, setIsGameModalOpen] = useState(false);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isBoardGameModalOpen, setIsBoardGameModalOpen] = useState(false);
-  const [isTokenValid, setIsTokenValid] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
 // API Calls
@@ -173,9 +172,9 @@ export default function Home() {
 
         {/* Tab Content */}
         {activeTab === "events" ? (
-            <EventsTab events={events} isTokenValid={isAdmin} fetchEvents={fetchEvents}/>
+            <EventsTab events={events} isAdmin={isAdmin} fetchEvents={fetchEvents}/>
         ) : activeTab === "games" ? (
-          <GamesTab sortedGames={sortedGames} fetchGames={fetchGames}/>
+          <GamesTab isAdmin={isAdmin} sortedGames={sortedGames} fetchGames={fetchGames}/>
         ) : activeTab === "boardgames" ? (
           <BoardGamesTab isAdmin={isAdmin} boardGames={boardGames} fetchBoardGames={fetchBoardGames} onAddBoardGame={(newBoardGame) => {addBoardGame(newBoardGame);}}/>
         ) : null}

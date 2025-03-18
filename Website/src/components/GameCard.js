@@ -130,7 +130,7 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
 
   
 
-  export default function GameCard({ game, resetGames }) {
+  export default function GameCard({ isAdmin, game, resetGames }) {
     const [isRSVPModalOpen, setRSVPModalOpen] = useState(false);
     const [isEditModalOpen, setEditModalOpen] = useState(false);
     const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
@@ -138,6 +138,11 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
     // Handle edit click: check token or prompt for password via modal.
     const handleEdit = async () => {
       const token = null; // Replace with: localStorage.getItem("token")
+      if (isAdmin) {
+        // If admin, open edit modal directly.
+        setEditModalOpen(true);
+        return;
+      }
       if (!token) {
         setPasswordModalOpen(true);
         return;

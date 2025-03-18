@@ -1,17 +1,33 @@
 import React from "react";
 import DOMPurify from "dompurify";
+import api from "../api/axiosClient";
+export default function BoardGameModal({ isAdmin, game, onClose, fetchBoardGames}) {
 
-export default function BoardGameModal({ game, onClose }) {
+  const handleDelete = async () => {
+    try {
+      await api.delete(`catalogue`, { data: { id: game.id } });
+      if (fetchBoardGames) fetchBoardGames();
+    } catch (error) {
+      console.error("Error deleting game:", error);
+    }
+  };
   return (
     <div
       className="fixed inset-0 flex items-center justify-center z-50"
       style={{ backgroundColor: "rgba(0, 0, 0, 0.85)" }}
       onClick={onClose}
     >
+      {isAdmin && (<button 
+        onClick={handleDelete} 
+        className="absolute top-30 right-150 p-1 text-red-600 hover:text-red-800 transition"
+      >
+        🗑️
+      </button>)}
       <div
         className="bg-white p-8 rounded-lg shadow-lg max-w-3xl w-full overflow-auto"
         onClick={(e) => e.stopPropagation()} // Prevents modal close on inner click
       >
+
         <img
           src={game.image}
           alt={game.title}
