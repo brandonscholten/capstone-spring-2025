@@ -202,23 +202,29 @@ export default function Home() {
           <div className="flex">
             <button 
               onClick={() => setActiveTab("events")}
-              className={`px-4 py-2 rounded-t-lg border ${
-                activeTab === "events"
-                  ? "bg-[#942E2A] text-white border-t border-l border-r border-[#942E2A] font-semibold"
-                  : "bg-white text-black border-black"
-              }`}
+			  className={`px-4 py-2 rounded-t-lg border group ${
+				activeTab === "events"
+				  ? "bg-[#942E2A] text-white border-t border-l border-r border-[#942E2A] font-semibold"
+				  : "bg-white text-black border-black hover:text-white relative overflow-hidden"
+			  }`}
             >
-              Events
+             <span className="relative z-10">Events</span>
+				{activeTab !== "events" && (
+					<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient"></span>
+				)}
             </button>
             <button 
               onClick={() => setActiveTab("games")}
-              className={`px-4 py-2 rounded-t-lg border ${
-                activeTab === "games"
-                  ? "bg-[#942E2A] text-white border-t border-l border-r border-[#942E2A] font-semibold"
-                  : "bg-white text-black border-black"
-              }`}
+			  className={`px-4 py-2 rounded-t-lg border group ${
+				activeTab === "games"
+				  ? "bg-[#942E2A] text-white border-t border-l border-r border-[#942E2A] font-semibold"
+				  : "bg-white text-black border-black hover:text-white relative overflow-hidden"
+			  }`}
             >
-              Games
+            <span className="relative z-10">Games</span>
+				{activeTab !== "games" && (
+					<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient"></span>
+				)}
             </button>
           </div>
           {/* Create Game Button (Top Right) */}

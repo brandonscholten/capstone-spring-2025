@@ -100,6 +100,13 @@
 	animation: gradient 3s ease forwards;
   }
 
+  button, 
+	.nav-links a,
+	[role="button"],
+	.clickable {
+	cursor: pointer;
+	}
+
   .container {
     width: 100%;
     height: 500px;
@@ -147,3 +154,38 @@
 	transition-delay: var(--delay, 0.5s);
 
   }
+
+  /* Border Animation Properties */
+@property --angle {
+	syntax: "<angle>";
+	initial-value: 0deg;
+	inherits: false;
+  }
+  
+  @keyframes border-rotate {
+	from {
+	  --angle: 0deg;
+	}
+	to {
+	  --angle: 360deg;
+	}
+  }
+  
+  /* Hover border animation for cards */
+  .container:hover .card::before,
+  .container:hover .card::after {
+	content: '';
+	position: absolute;
+	inset: -4px;
+	border-radius: calc(1rem + 4px);;
+	background-image: conic-gradient(from var(--angle), 
+	  #576b1e, #8ea37e, #bdcc7a, #c4cad5, #d7c2cb, #f8aa68, #576b1e);
+	z-index: -1;
+	animation: border-rotate 3s linear infinite;
+  }
+  
+  .container:hover .card::before {
+	filter: blur(1.2rem);
+	opacity: 0.5;
+  }
+  
