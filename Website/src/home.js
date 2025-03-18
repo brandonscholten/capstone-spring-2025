@@ -144,7 +144,7 @@ export default function Home() {
 
   return (
     <div className="flex justify-center min-h-screen bg-gray-100 p-4 relative">
-      <div className="w-full max-w-4xl bg-white shadow-md rounded-lg p-6">
+      <div className="w-full max-w-4xl bg-white header-spacer shadow-md rounded-lg p-6">
         {/* Tabs */}
         <div className="border-b border-black mb-4 flex justify-between items-center">
           <div className="flex">
@@ -184,8 +184,8 @@ export default function Home() {
         {/* Events Tab */}
         {activeTab === "events" ? (
 
-          <div className="w-full max-w-6xl bg-white shadow-md rounded-lg p-6">
-            <div className="grid grid-cols-3 gap-6">
+          <div className="w-full max-w-4xl gradient-bg shadow-md rounded-lg p-6">
+            <div className="grid bg-white grid-cols-3 gap-6">
           {mockEvents.map((event) => (
             <div
               key={event.id}
@@ -213,10 +213,10 @@ export default function Home() {
                     ? event.description
                     : event.description.substring(0, 50) + "..."}
                 </p>
-                <button
-                  className="mt-4 px-4 py-2 bg-[#942E2A] text-white rounded hover:scale-105 transition-all"
-                >
-                  RSVP
+                <button className="relative mt-4 px-4 py-2 text-white rounded hover:scale-105 transition-all overflow-hidden group">
+				<span className="relative z-10">RSVP</span>
+				<span className="absolute inset-0 bg-[#942E2A]"></span>
+				<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient"></span>
                 </button>
               </div>
             </div>
