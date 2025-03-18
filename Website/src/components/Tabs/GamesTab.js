@@ -2,6 +2,7 @@ import GameCard from "../GameCard";
 import { useState } from "react";
 
 export default function BoardGamesTab({ isAdmin, sortedGames, fetchGames }) {
+export default function GamesTab({ sortedGames, fetchGames, isAdmin }) {
   const [searchQuery, setSearchQuery] = useState("");
     return (
         <div>

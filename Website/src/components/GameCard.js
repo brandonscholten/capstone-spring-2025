@@ -138,8 +138,7 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
     // Handle edit click: check token or prompt for password via modal.
     const handleEdit = async () => {
       const token = null; // Replace with: localStorage.getItem("token")
-      if (isAdmin) {
-        // If admin, open edit modal directly.
+      if(isAdmin){
         setEditModalOpen(true);
         return;
       }

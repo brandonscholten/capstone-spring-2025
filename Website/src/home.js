@@ -173,6 +173,7 @@ export default function Home() {
         {/* Tab Content */}
         {activeTab === "events" ? (
             <EventsTab events={events} isAdmin={isAdmin} fetchEvents={fetchEvents}/>
+            <EventsTab events={events} isAdmin={isAdmin} fetchEvents={fetchEvents}/>
         ) : activeTab === "games" ? (
           <GamesTab isAdmin={isAdmin} sortedGames={sortedGames} fetchGames={fetchGames}/>
         ) : activeTab === "boardgames" ? (
