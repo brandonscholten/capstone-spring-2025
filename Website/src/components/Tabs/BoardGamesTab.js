@@ -84,7 +84,7 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
             onClick={() => setSelectedGame(game)}
             className={`mx-auto relative transition-all duration-300 rounded-lg shadow-lg p-4 flex flex-col items-center overflow-hidden border border-gray-200 
               ${hoveredEvent === game.id ? "scale-105 transform" : "scale-95"}
-              w-full sm:w-[80%] md:w-[60%] lg:w-[13vw]
+              w-full sm:w-[80%] md:w-[60%] lg:w-[100%]
             `}
           >
             <BoardGameCard isAdmin={isAdmin} game={game} />
