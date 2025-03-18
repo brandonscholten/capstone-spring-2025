@@ -102,16 +102,17 @@
 
   .container {
     width: 100%;
-    height: 400px;
+    height: 500px;
     perspective: 800px;
   }
   
   .card {
     height: 100%;
-    width: 100%;
+    width: 80%;
     position: relative;
     transition: transform 1s ease-in-out;
     transform-style: preserve-3d;
+	transition-delay: 0s;
   }
   
   .front,
@@ -129,17 +130,20 @@
   }
   
   .back {
-    background-color: #3a3a3a;
-    transform: rotateY(180deg);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    padding: 1rem;
-    text-align: center;
+	background-color: white;
+	transform: rotateY(180deg);
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start; /* Changed from center to flex-start */
+	align-items: center;
+	color: black; /* Changed from white to black, as your text seems to be dark */
+	padding: 1rem;
+	text-align: center;
+	overflow-y: auto;
   }
   
  .card.flip {
-    transform: rotateY(180deg);
+    transform: rotateY(180deg) !important;
+	transition-delay: var(--delay, 0.5s);
+
   }

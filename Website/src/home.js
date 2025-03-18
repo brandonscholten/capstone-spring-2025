@@ -115,6 +115,8 @@ export default function Home() {
   const [hoverTimeout, setHoverTimeout] = useState(null);
   const [visibleCards, setVisibleCards] = useState([]);
   const cardRefs = useRef([]);
+  const [expandedDescriptions, setExpandedDescriptions] = useState({});
+
 
   const handleMouseEnter = (eventId) => {
     const timeout = setTimeout(() => {
@@ -145,44 +147,44 @@ export default function Home() {
   });
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const cardId = entry.target.getAttribute("data-id");
-          
-          // If card enters viewport, add to visibleCards
-          // If card exits viewport, remove from visibleCards
-          setVisibleCards((prev) => {
-            if (entry.isIntersecting) {
-              console.log("Card entered viewport:", cardId);
-              return [...new Set([...prev, cardId])];
-            } else {
-              console.log("Card exited viewport:", cardId);
-              return prev.filter(id => id !== cardId);
-            }
-          });
-        });
-      },
-      { threshold: 0.3 } // Lower threshold to detect cards earlier
-    );
+	const observer = new IntersectionObserver(
+	  (entries) => {
+		entries.forEach((entry) => {
+		  const cardId = entry.target.getAttribute("data-id");
+		  
+		  // Only add cards to visibleCards, never remove them
+		  if (entry.isIntersecting) {
+			setVisibleCards((prev) => {
+			  if (!prev.includes(cardId)) {
+				console.log("Card entered viewport and will stay flipped:", cardId);
+				return [...prev, cardId];
+			  }
+			  return prev;
+			});
+		  }
+		  // Remove this "else" block to prevent cards from being removed from visibleCards
+		});
+	  },
+	  { threshold: 0.3 }
+	);
   
-    // Copy the current refs to a local variable
-    const currentCardRefs = [...cardRefs.current];
+	// Rest of the observer code remains the same
+	const currentCardRefs = [...cardRefs.current];
+	
+	console.log("Current cardRefs before observing:", currentCardRefs);
+	
+	currentCardRefs.forEach((card) => {
+	  if (card) observer.observe(card);
+	});
   
-    console.log("Current cardRefs before observing:", currentCardRefs);
-  
-    currentCardRefs.forEach((card) => {
-      if (card) observer.observe(card);
-    });
-  
-    return () => {
-      currentCardRefs.forEach((card) => {
-        if (card) {
-          console.log("Unobserving card:", card.getAttribute("data-id"));
-          observer.unobserve(card);
-        }
-      });
-    };
+	return () => {
+	  currentCardRefs.forEach((card) => {
+		if (card) {
+		  console.log("Unobserving card:", card.getAttribute("data-id"));
+		  observer.unobserve(card);
+		}
+	  });
+	};
   }, []);
 
   useEffect(() => {
@@ -279,18 +281,21 @@ export default function Home() {
           <div className="w-full max-w-4xl gradient-bg shadow-md rounded-lg p-6">
       <div className="grid bg-white grid-cols-2 gap-6 overflow-hidden">
         {mockEvents.map((event, index) => (
-          <div
-            key={event.id}
-            data-id={event.id}
-            ref={(el) => (cardRefs.current[index] = el)}
-            className={`container mx-auto relative transition-all duration-300 rounded-lg shadow-lg p-4 flex flex-col items-center overflow-hidden border border-gray-200 
-              `}
-          >
-            <div className={`card ${visibleCards.includes(event.id) ? "flip" : ""}`}>
-              {/* Front of the card */}
+			<div
+				key={event.id}
+				data-id={event.id}
+				ref={(el) => (cardRefs.current[index] = el)}
+				className={`container mx-auto relative transition-all duration-300 rounded-lg  p-4 flex flex-col items-center overflow-hidden 
+				`}
+			>
+			<div 
+			className={`card ${visibleCards.includes(event.id.toString()) ? "flip" : "nope"}`}
+			style={{ '--delay': `${index * 0.25}s` }} // Add cascading delay based on card index
+			>              
+			{/* Front of the card */}
               <div className="front">
                 <img
-                  src={event.image}
+                  src="/b&b_crest.png"
                   alt={event.title}
                   className="w-full h-full object-cover rounded-lg"
                 />
@@ -298,6 +303,11 @@ export default function Home() {
 
               {/* Back of the card */}
               <div className="back">
+			  <img
+                src={event.image}
+                alt={event.title}
+				className="w-full h-40 object-cover rounded-lg mb-4" 
+              />
                 <div className="text-center w-full">
                   <h2 className="text-xl font-bold mb-2">{event.title}</h2>
                   <p className="text-gray-700 font-semibold">Game: {event.game}</p>
@@ -305,12 +315,27 @@ export default function Home() {
                   <p className="text-gray-700 font-semibold">Time: {event.time}</p>
                   <p className="text-gray-700 font-semibold">Price: {event.price}</p>
                   <p className="text-gray-500 text-sm mt-2">
-                    {event.description.substring(0, 50)}...
-                  </p>
-                  <button className="relative mt-4 px-4 py-2 text-white rounded hover:scale-105 transition-all overflow-hidden group">
-                    <span className="relative z-10">RSVP</span>
-                    <span className="absolute inset-0 bg-[#942E2A]"></span>
-                  </button>
+					{expandedDescriptions[event.id] 
+						? event.description 
+						: `${event.description.substring(0, 50)}...`}
+					<button 
+						onClick={(e) => {
+						e.stopPropagation(); // Prevent triggering other click events
+						setExpandedDescriptions(prev => ({
+							...prev, 
+							[event.id]: !prev[event.id]
+						}));
+						}}
+						className="ml-1 text-[#942E2A] hover:underline font-medium"
+					>
+						{expandedDescriptions[event.id] ? "Show Less" : "Read More"}
+					</button>
+				   </p>
+				   <button className="relative mt-4 px-4 py-2 text-white rounded hover:scale-105 transition-all overflow-hidden group">
+					<span className="relative z-10">RSVP</span>
+					<span className="absolute inset-0 bg-[#942E2A]"></span>
+					<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient"></span>
+				   </button>
                 </div>
               </div>
             </div>
