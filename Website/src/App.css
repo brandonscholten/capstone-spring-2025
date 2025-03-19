@@ -189,3 +189,18 @@
 	opacity: 0.5;
   }
   
+/* Update hover effects to include expansion */
+
+/* Card expansion on hover */
+.container:hover .card {
+	transform: scale(1.05);
+	transition: transform 0.3s ease;
+	z-index: 10; /* Ensure hovered card appears above others */
+  }
+  
+  /* Keep the flipped card behavior intact while adding scale */
+  .container:hover .card.flip {
+	transform: rotateY(180deg) scale(1.05) !important; /* Combine both transforms */
+	transition: transform 0.25s ease-in-out;
+	
+  }
