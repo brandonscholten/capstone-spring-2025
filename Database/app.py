@@ -5,9 +5,13 @@ from flask_cors import CORS
 import requests
 import bcrypt
 from datetime import datetime, timedelta
+import redis
+import json
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+r = redis.Redis(host='localhost', port=6379, db=0)
 
 # Update the connection string with your actual MySQL credentials and database name
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:BOTNBEVY@localhost:3306/botnbevy_db'
@@ -198,6 +202,8 @@ def create_event():
     )
     db.session.add(new_event)
     db.session.commit()
+    
+    announce_event(new_event)
     return jsonify({"message": "Event created", "id": new_event.id}), 201
 
 @app.route('/events/<int:event_id>', methods=['PUT'])
@@ -248,7 +254,6 @@ def get_games():
             "startTime": game.start_time.isoformat(),
             "endTime": game.end_time.isoformat(),
             "description": game.description,
-            "image": game.image,
             "players": game.players,
             "participants": game.participants,
             "catalogue": game.catalogue_id,
@@ -275,6 +280,7 @@ def create_game():
     )
     db.session.add(new_game)
     db.session.commit()
+    announce_game(new_game)
     return jsonify({"message": "Game created", "id": new_game.id}), 201
 
 @app.route('/games', methods=['DELETE'])
@@ -430,5 +436,38 @@ def cleanup():
     db.session.commit()
     return jsonify({"message": "Cleanup completed"}), 200
 
+
+def announce_event(event):
+    # Convert event details to a JSON message
+    message = json.dumps({
+        'title': event.title,
+        'description': event.description,
+        'start_time': event.start_time.isoformat(),
+        'end_time': event.end_time.isoformat(),
+        'price': event.price,
+        'game': event.game.title if event.game else None,
+        'participants': event.participants
+    })
+    # Publish to the 'new_event' channel
+    r.publish('new_event', message)
+    
+def announce_game(game):
+    """
+    Publish game details to Redis so that the Discord bot can announce it.
+    """
+    message = json.dumps({
+        'id': game.id,
+        'title': game.title,
+        'organizer': game.organizer,
+        'start_time': game.start_time.isoformat(),
+        'end_time': game.end_time.isoformat(),
+        'description': game.description,
+        'players': game.players,
+        'participants': game.participants,
+        'catalogue': game.catalogue_id,
+    })
+    # Publish the message to the "new_game" channel
+    r.publish('new_game', message)
+    
 if __name__ == '__main__':
     app.run(debug=True)
