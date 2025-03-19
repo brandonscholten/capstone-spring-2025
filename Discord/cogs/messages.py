@@ -20,41 +20,134 @@ import requests
 from dotenv import load_dotenv, dotenv_values
 import os
 import typing
-
+import re
 class Messages(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     @app_commands.command(name="list_events", description="Creates an event and allows users to RSVP")
     async def listevents(self, interaction: discord.Interaction):
-       #Temp list to hold items to list out the events
-
-
+        # Temp list to hold items to list out the events
         return
 
     @app_commands.command(name="list_games", description="Lists the current game collection of Board & Bevy")
-    async def listGames(self, interaction: discord.Interaction):
-
-        #Call API HERE and collect titles!
-        games = requests.get("http://127.0.0.1:5000/catalogue/titles")
-
-        #games = requests.post("http://127.0.0.1:5000/catalogue/search", json="{title: 'T'}")
-
-        games = games.json()
-
-
+    @app_commands.describe(
+        sort_by="Sort by one of: name, players, difficulty, or time",
+        filter_title="Filter by title substring (e.g., 'Catan')",
+        filter_players="Filter by players (e.g., '4'; supports ranges like '2-6' in the game data)",
+        filter_difficulty="Filter by difficulty (e.g., '3.5')",
+        filter_duration="Filter by duration (e.g., '60'; supports ranges like '60-90' in the game data)"
+    )
+    async def listGames(
+        self,
+        interaction: discord.Interaction,
+        sort_by: str = "name",
+        filter_title: str = "",
+        filter_players: str = "",
+        filter_difficulty: str = "",
+        filter_duration: str = ""
+    ):
+        # Call API to get the game catalogue
+        response = requests.get("http://127.0.0.1:5000/catalogue")
+        games = response.json()
         print(games)
+        
+        # Helper function: Check if a number matches a range string (e.g., "2-6")
+        def check_range_match(value: str, filter_val: str) -> bool:
+            try:
+                filter_num = int(filter_val)
+            except ValueError:
+                return False
+            match = re.search(r'(\d+)\s*-\s*(\d+)', value)
+            if match:
+                min_val = int(match.group(1))
+                max_val = int(match.group(2))
+                return min_val <= filter_num <= max_val
+            else:
+                try:
+                    return int(value) == filter_num
+                except ValueError:
+                    return False
 
-        gameString = f''
+        # Helper function: Extract a number from a string (for sorting ranges, we use the lower bound)
+        def extract_min(value: str) -> int:
+            match = re.search(r'(\d+)', value)
+            if match:
+                return int(match.group(1))
+            return 0
 
-        #Go through the games and add them as bullet points
+        # Filter the games based on provided parameters
+        filtered_games = []
         for game in games:
-            print(type(game))
-            gameString += f'\n * {game["title"]}'
+            # Title filter: check if filter_title is a substring (case-insensitive)
+            title = game.get("title", "")
+            matches_title = filter_title.lower() in title.lower() if filter_title else True
 
+            # Players filter: check if the game players match the filter
+            players = game.get("players", "")
+            matches_players = check_range_match(players, filter_players) if filter_players else True
 
-        #Send the games back in an message
-        await interaction.response.send_message(gameString)
+            # Difficulty filter: check if the game difficulty is within 0.55 of the filter value
+            matches_difficulty = True
+            if filter_difficulty:
+                try:
+                    game_diff = float(game.get("difficulty", 0))
+                    filter_diff = float(filter_difficulty)
+                    if abs(game_diff - filter_diff) > 0.55:
+                        matches_difficulty = False
+                except ValueError:
+                    matches_difficulty = False
+
+            # Duration filter: check if the game duration matches the filter
+            duration = game.get("duration", "")
+            matches_duration = check_range_match(duration, filter_duration) if filter_duration else True
+
+            if matches_title and matches_players and matches_difficulty and matches_duration:
+                filtered_games.append(game)
+
+        # Sort the filtered games based on the sort_by parameter
+        sort_by = sort_by.lower()
+        if sort_by == "name":
+            sorted_games = sorted(filtered_games, key=lambda g: g.get("title", "").lower())
+        elif sort_by == "players":
+            sorted_games = sorted(filtered_games, key=lambda g: extract_min(g.get("players", "")))
+        elif sort_by == "difficulty":
+            sorted_games = sorted(filtered_games, key=lambda g: float(g.get("difficulty", 0)))
+        elif sort_by in ["time", "duration"]:
+            sorted_games = sorted(filtered_games, key=lambda g: extract_min(g.get("duration", "")))
+        else:
+            sorted_games = filtered_games
+
+        # Build the response string with bullet points for each game title
+        if not sorted_games:
+            gameString = "No games found matching your criteria."
+        else:
+            gameString = "\n".join(f"* {game.get('title', 'Unknown Title')}" for game in sorted_games)
+
+        # Function to split a long message into chunks not exceeding Discord's 2000 character limit
+        def split_message(message: str, limit: int = 2000):
+            lines = message.split('\n')
+            parts = []
+            current_part = ""
+            for line in lines:
+                # +1 for the newline
+                if len(current_part) + len(line) + 1 > limit:
+                    parts.append(current_part)
+                    current_part = line
+                else:
+                    current_part = line if not current_part else current_part + "\n" + line
+            if current_part:
+                parts.append(current_part)
+            return parts
+
+        # Split the message if needed
+        message_parts = split_message(gameString)
+
+        # Send the messages as ephemeral
+        # The first message uses response.send_message; subsequent ones are sent as follow-ups.
+        await interaction.response.send_message(message_parts[0], ephemeral=True)
+        for part in message_parts[1:]:
+            await interaction.followup.send(part, ephemeral=True)
     
     
     

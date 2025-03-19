@@ -10,7 +10,7 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # Update the connection string with your actual MySQL credentials and database name
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:0000@localhost:3306/botnbevy_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:BOTNBEVY@localhost:3306/botnbevy_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
