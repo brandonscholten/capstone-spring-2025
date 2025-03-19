@@ -7,17 +7,21 @@ import BoardGamesTab from "./components/Tabs/BoardGamesTab";
 import CreateBoardGameModal from "./components/CreateBoardGameModal";
 import api from "./api/axiosClient";
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("events");
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem("activeTab") || "events";
+  });// API Calls
   const [events, setEvents] = useState([]);
   const [games, setGames] = useState([]);
   const [boardGames, setBoardGames] = useState([]);
   const [isGameModalOpen, setIsGameModalOpen] = useState(false);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isBoardGameModalOpen, setIsBoardGameModalOpen] = useState(false);
-  const [isTokenValid, setIsTokenValid] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
-// API Calls
+  useEffect(() => {
+      localStorage.setItem("activeTab", activeTab);
+    }, [activeTab]);
+
   const fetchEvents = async () => {
     api.get("http://localhost:5000/events")
     .then((response) => setEvents(response.data))
@@ -173,9 +177,9 @@ export default function Home() {
 
         {/* Tab Content */}
         {activeTab === "events" ? (
-            <EventsTab events={events} isTokenValid={isAdmin} fetchEvents={fetchEvents}/>
+            <EventsTab events={events} isAdmin={isAdmin} fetchEvents={fetchEvents}/>
         ) : activeTab === "games" ? (
-          <GamesTab sortedGames={sortedGames} fetchGames={fetchGames}/>
+          <GamesTab isAdmin={isAdmin} sortedGames={sortedGames} fetchGames={fetchGames}/>
         ) : activeTab === "boardgames" ? (
           <BoardGamesTab isAdmin={isAdmin} boardGames={boardGames} fetchBoardGames={fetchBoardGames} onAddBoardGame={(newBoardGame) => {addBoardGame(newBoardGame);}}/>
         ) : null}

@@ -32,15 +32,29 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
   useEffect(() => {}, [boardGames]);
 
   // Apply filters
-  const filteredBoardGames = boardGames.filter((game) => {
+  const filteredBoardGames = boardGames
+  .filter((game) => {
     const matchesTitle = game.title.toLowerCase().includes(filterTitle.toLowerCase());
-    const matchesPlayers = filterPlayers ? checkRangeMatch(game.minplayers + "-" + game.maxplayers, filterPlayers) : true;
+    const matchesPlayers = filterPlayers ? checkRangeMatch(game.players, filterPlayers) : true;
     const matchesDifficulty = filterDifficulty
       ? Math.abs(parseFloat(game.difficulty) - parseFloat(filterDifficulty)) <= 0.55
       : true;
     const matchesDuration = filterDuration ? checkRangeMatch(game.duration, filterDuration) : true;
     return matchesTitle && matchesPlayers && matchesDifficulty && matchesDuration;
+  })
+  .sort((a, b) => {
+    const filterLower = filterTitle.toLowerCase();
+    const aTitle = a.title.toLowerCase();
+    const bTitle = b.title.toLowerCase();
+    
+    // Calculate the index position of filterTitle in each title
+    const aIndex = aTitle.indexOf(filterLower);
+    const bIndex = bTitle.indexOf(filterLower);
+    
+    // Lower index means a closer match to filterTitle
+    return aIndex - bIndex;
   });
+
 
   const handleMouseEnter = (id) => {
     setHoveredEvent(id);
@@ -70,15 +84,15 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
             onClick={() => setSelectedGame(game)}
             className={`mx-auto relative transition-all duration-300 rounded-lg shadow-lg p-4 flex flex-col items-center overflow-hidden border border-gray-200 
               ${hoveredEvent === game.id ? "scale-105 transform" : "scale-95"}
-              w-full sm:w-[80%] md:w-[60%] lg:w-[13vw]
+              w-full sm:w-[80%] md:w-[60%] lg:w-[100%]
             `}
           >
-            <BoardGameCard game={game} />
+            <BoardGameCard isAdmin={isAdmin} game={game} />
           </div>
         ))}
       </div>
       {isModalOpen && <CreateBoardGameModal setIsModalOpen={setIsModalOpen} fetchBoardGames={fetchBoardGames} onAddBoardGame={onAddBoardGame}/>}
-      {selectedGame && <BoardGameModal game={selectedGame} onClose={() => setSelectedGame(null)} />}
+      {selectedGame && <BoardGameModal fetchBoardGames={fetchBoardGames} isAdmin={isAdmin} game={selectedGame} onClose={() => setSelectedGame(null)} />}
     </div>
   );
 }

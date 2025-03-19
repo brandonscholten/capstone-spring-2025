@@ -55,9 +55,9 @@ function getAllowedTimes(dateStr) {
   const dateObj = new Date(dateStr);
   const day = dateObj.getDay(); // Sunday = 0, Monday = 1, etc.
   let startHour;
-  if (day === 3 || day === 4 || day === 5) { // Wed, Thu, Fri: start at 16:00 (4 PM)
+  if (day === 2 || day === 3 || day === 4) { // Wed, Thu, Fri: start at 16:00 (4 PM)
     startHour = 16;
-  } else if (day === 6) { // Saturday: start at 12:00 (noon)
+  } else if (day === 5) { // Saturday: start at 12:00 (noon)
     startHour = 12;
   } else {
     return []; // not an allowed day
@@ -166,7 +166,7 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
     const d = new Date(date);
     const day = d.getDay();
     // Allow only Wed (3), Thu (4), Fri (5), or Sat (6).
-    if (day === 3 || day === 4 || day === 5 || day === 6) {
+    if (day === 2 || day === 3 || day === 4 || day === 5) {
       setStartDate(date);
       setDateError(null);
       const newAllowed = getAllowedTimes(date);
@@ -197,7 +197,6 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
       players: numPlayers,
       description: description,
       password: password,
-      image: gameImage,
       catalogue: selectedGameId,
     };
 
@@ -339,15 +338,6 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               ></textarea>
-              <label className="block mb-1 font-semibold">
-                Game Image
-              </label>
-              <input
-                type="text"
-                className="w-full border p-2 rounded"
-                value={gameImage}
-                onChange={(e) => setGameImage(e.target.value)}
-              />
               <label className="block mb-1 font-semibold">
                 Game Password
               </label>

@@ -1,8 +1,13 @@
 import React from "react";
-import DOMPurify from 'dompurify';
+import DOMPurify from "dompurify";
+
 export default function BoardGameCard({ game }) {
+
+
   return (
-    <div >
+    <div className="relative p-4 border rounded-lg shadow-md bg-white">
+      {/* Trash Icon */}
+
       <img 
         src={game.image} 
         alt={game.title} 
@@ -14,10 +19,10 @@ export default function BoardGameCard({ game }) {
       <p className="text-sm text-gray-600">Players: {game.players}</p>
       <p className="text-sm text-gray-600">Complexity: {game.difficulty}</p>
       <p className="text-sm text-gray-600">Time to Play: {game.duration} mins</p>
-      <br></br>
-      {/* Scrollable description container with scrollbar only on hover */}
+      
+      {/* Scrollable description container */}
       <div 
-        className="h-40 mb-2 text-sm text-gray-800 scroll-hover"
+        className="h-40 mb-2 text-sm text-gray-800 scroll-hover overflow-y-auto"
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(game.description) }}
       />
     </div>

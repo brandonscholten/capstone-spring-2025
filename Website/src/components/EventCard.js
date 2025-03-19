@@ -84,7 +84,7 @@ export default function EventCard({ event, isValid, resetEvents }) {
         onMouseLeave={handleMouseLeave}
         className={`mx-auto relative transition-all duration-300 rounded-lg shadow-lg p-4 flex flex-col items-center overflow-hidden border border-gray-200 
           ${hoveredEvent === event.id ? "scale-105 transform" : "scale-95"}
-          w-full sm:w-[80%] md:w-[60%] lg:w-[13vw]
+          w-full sm:w-[80%] md:w-[60%] lg:w-[100%]
         `}
       >
         {/* Edit icon (only if token is valid) */}
@@ -97,6 +97,7 @@ export default function EventCard({ event, isValid, resetEvents }) {
             ✏️
           </button>
         )}
+        {event.image && (
         <img
           src={event.image}
           alt={event.title}
@@ -104,6 +105,7 @@ export default function EventCard({ event, isValid, resetEvents }) {
             ${hoveredEvent === event.id ? "h-48" : "h-40"}
           `}
         />
+        )}
         <div className="mt-4 text-center w-full">
           <h2 className="text-xl font-bold mb-2">{event.title}</h2>
           <p className="text-gray-700 font-semibold">Game: {event.game}</p>
