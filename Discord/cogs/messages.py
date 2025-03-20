@@ -197,7 +197,7 @@ class Messages(commands.Cog):
         print(game_name)
         if game_name == None:
             def gameNameCollectionCheck(message):
-             return message.author == usersObject and message.channel == thread
+                return message.author == usersObject and message.channel == thread
 
             #Prompt for the name
             await thread.send("Please send the name of your game")
