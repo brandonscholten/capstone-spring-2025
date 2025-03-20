@@ -153,9 +153,10 @@ class Messages(commands.Cog):
     
     @app_commands.command(name="create_game", description="Creates an game and allows users to RSVP")
     @app_commands.describe(game_name="the name of the game")
+    @app_commands.describe(game_max_players="The max number of players")
     @app_commands.describe(game_date="date of the game (format: mm/dd/yyy)")
     @app_commands.describe(game_time="date of the game (format: HH:MM AM/PM)")
-    async def createGame(self, interaction: discord.Interaction, game_name: typing.Optional[str], game_date: typing.Optional[str], game_time: typing.Optional[str]):
+    async def createGame(self, interaction: discord.Interaction, game_name: typing.Optional[str], game_max_players: typing.Optional[int], game_date: typing.Optional[str], game_time: typing.Optional[str]):
         usersID = interaction.user.id
         usersName = interaction.user.name
         usersObject = await self.bot.fetch_user(usersID)
@@ -164,6 +165,12 @@ class Messages(commands.Cog):
         game_time = game_time
         game_name = game_name
         game_description = None
+        game_max_players = game_max_players
+
+        #Function to ensure the date and time are valid formats for ISO8601
+        def validISO8601Date(date):
+            print("Checking Date!")
+
 
         #print(event_time)
 
@@ -199,18 +206,49 @@ class Messages(commands.Cog):
             try:
                 gameNameResponse = await self.bot.wait_for('message', timeout=60, check=gameNameCollectionCheck)
                 game_name = gameNameResponse
+                print("Collected the game name!")
+            except TimeoutError:
+                thread.send("Timeout reached, please try creating an game again")
+
+        #
+        #Ask for the max number of players of the event if it was not filled out in the command
+        #
+        def isPlayerMaxAInt(maxPlayers):
+            return type(maxPlayers) == int
+
+
+        print(game_max_players)
+        if game_max_players == None:
+            def maxPlayersCheck(message):
+             return message.author == usersObject and message.channel == thread
+
+            #Prompt for the name
+            await thread.send("Please send the max number of players for your game")
+
+            #Now try and wait for the user to respond in 60 seconds, if nothing, then error out
+            try:
+                maxNumberOfPlayers = await self.bot.wait_for('message', timeout=60, check=maxPlayersCheck)
+                game_max_players = maxNumberOfPlayers
+                #print("Collected the game name!")
             except TimeoutError:
                 thread.send("Timeout reached, please try creating an game again")
 
 
-        #
         #Collect the game description
-        #
-        try:
-            gameDescription = await self.bot.wait_for('message', timeout=120)
-            game_description = gameDescription
-        except TimeoutError:
-            thread.send()
+        if game_description == None:
+            def gameDescriptionCheck(message):
+             return message.author == usersObject and message.channel == thread
+
+            #Prompt for the name
+            await thread.send("Please send the description of your game")
+
+            #Now try and wait for the user to respond in 60 seconds, if nothing, then error out
+            try:
+                gameDescriptionResponse = await self.bot.wait_for('message', timeout=60, check=gameDescriptionCheck)
+                game_description = gameDescriptionResponse
+                print("Collected the game name!")
+            except TimeoutError:
+                thread.send("Timeout reached, please try creating an game again")
 
 
         #Ask if the person would like to book the private room for the event?
@@ -259,11 +297,14 @@ class Messages(commands.Cog):
 
         #Build the Admin channel message for approvals:
         approvalMessage = f' The user {usersName} is requesting the following game, details are below\n'
-        approvalMessage += f'* Event Name: {game_name.content}\n'
-
+        approvalMessage += f'* Game Name: {game_name.content}\n'
+        approvalMessage += f'* Max Number Of Players: {game_max_players.content}\n'
+        approvalMessage += f'* Description: \n {game_description.content}\n'
         approvalMessage += f'* Private Room Requested?: {privateRoomRequest}'
 
         gameApprovalMessage = await gameApprovalChanel.send(approvalMessage)
+
+        denyMessageReason = None
 
         #Now add the interactions to the event
         await gameApprovalMessage.add_reaction('👍')
@@ -283,26 +324,34 @@ class Messages(commands.Cog):
             #Now dm the requester to tell them it has been approved
             await usersObject.send(f"Your request has been approved for {game_date} at {game_time}.\n A reminder 1 hour before the event will be directly sent to you.")
            elif str(reaction.emoji) == '👎':
-               print("Thumbs down!!!")
 
                optionalDenyMessagePrompt = await gameApprovalMessage.reply("Would you like to send a reason for denying the event?")
 
                #Add the reactions
-               optionalDenyMessagePrompt.add_reaction("👍")
-               optionalDenyMessagePrompt.add_reaction("👎")
+               await optionalDenyMessagePrompt.add_reaction("👍")
+               await optionalDenyMessagePrompt.add_reaction("👎")
 
                try:
-                   denyMessageReasonReaction, user = self.bot.wait_for("reaction_add")
+                   denyMessageReasonReaction, user = await self.bot.wait_for("reaction_add")
 
-                   if str(denyMessageReason.emoji) == '👍':
-                       #Collect the reason
-                       optionalDenyMessagePrompt.reply("Please send your reason")
+                   print(denyMessageReasonReaction.emoji)
 
-                       #try:
-               except:
-                   print("ERROR")           
+                   if str(denyMessageReasonReaction.emoji) == '👍':
+                     #Collect the reason
+                     await optionalDenyMessagePrompt.reply("Please send your reason")
+
+                     try:
+                      def denyMessageResponseCheck(message):
+                        return message.author == user and message.channel == gameApprovalMessage.channel
+                            
+                      denyMessageReason = await self.bot.wait_for('message', timeout=60, check=denyMessageResponseCheck)
+                      print(f'Deny message reason in try: {denyMessageReason}')
+                     except TimeoutError:
+                                thread.send("Timeout reached, sending rejection with no reason")
+               except Exception as e:
+                   print(f'DENIAL MESSAGE ERROR: {e}')       
                
-               denyMessageReason = "This will hold the reason for denial"
+               print(denyMessageReason)
 
                #Now print a follow-up message, asking for an optional reason
 
@@ -310,7 +359,7 @@ class Messages(commands.Cog):
 
                if denyMessageReason != None:
                  #There is a deny message, then append it to the string
-                 denialMessage += f', please find the reason below \n{denyMessageReason}'
+                 denialMessage += f', please find the reason below \n{denyMessageReason.content}'
                 
                #Now send the message
                await usersObject.send(denialMessage)
