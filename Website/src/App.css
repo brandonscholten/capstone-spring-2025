@@ -36,3 +36,11 @@
     transform: rotate(360deg);
   }
 }
+
+.scroll-hover {
+  overflow-y: hidden;
+}
+
+.scroll-hover:hover {
+  overflow-y: auto;
+}

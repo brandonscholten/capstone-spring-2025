@@ -1,6 +1,14 @@
+Website/node_modules
+Discord/__pycache__/bot.cpython-312.pyc
+Discord/__pycache__/Messages.cpython-312.pyc
 .env
 node_modules
 env
 Discord/__pycache__/*
 .vscode/*
 .vscode/settings.json
+.env
+.env
+Discord/cogs/__pycache__
+Discord/cogs/__pycache__/messages.cpython-312.pyc
+Discord/cogs/__pycache__/messages.cpython-312.pyc
