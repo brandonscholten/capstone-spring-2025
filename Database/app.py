@@ -7,15 +7,30 @@ import bcrypt
 from datetime import datetime, timedelta
 import redis
 import json
+from dotenv import load_dotenv
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from datetime import datetime
+import pytz
+import os
+
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 r = redis.Redis(host='localhost', port=6379, db=0)
-
+load_dotenv()
 # Update the connection string with your actual MySQL credentials and database name
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:BOTNBEVY@localhost:3306/botnbevy_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE')
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+CALENDAR_ID = os.getenv('CALENDAR_ID')
+credentials = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES
+)
+service = build('calendar', 'v3', credentials=credentials)
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -469,5 +484,86 @@ def announce_game(game):
     # Publish the message to the "new_game" channel
     r.publish('new_game', message)
     
+    
+    
+def check_event_conflict(start_iso, end_iso):
+    """
+    Check for existing events in the calendar that fall within the given time range.
+    Both start_iso and end_iso should be in ISO format with timezone info.
+    """
+    events_result = service.events().list(
+        calendarId=CALENDAR_ID,
+        timeMin=start_iso,
+        timeMax=end_iso,
+        singleEvents=True,
+        orderBy='startTime'
+    ).execute()
+    events = events_result.get('items', [])
+    return len(events) > 0
+
+@app.route('/create-event', methods=['POST'])
+def create_calendar_event():
+    data = request.get_json()
+    title = data.get('title')
+    description = data.get('description', '')
+    start_time = data.get('startTime')  # e.g., "2025-03-20T16:00:00Z"
+    end_time = data.get('endTime')      # e.g., "2025-03-20T20:00:00Z"
+
+    if not (title and start_time and end_time):
+        return jsonify({'error': 'Missing required fields: title, startTime, and endTime.'}), 400
+
+    # Check for overlapping events. If any event is found, return an error.
+    if check_event_conflict(start_time, end_time):
+        return jsonify({
+            'error': 'Time slot conflict: There is already an event scheduled during this time.'
+        }), 409
+
+    # Build the event payload for Google Calendar.
+    event_body = {
+        'summary': title,
+        'description': description,
+        'start': {
+            'dateTime': start_time,
+            'timeZone': 'UTC'  # Adjust if necessary.
+        },
+        'end': {
+            'dateTime': end_time,
+            'timeZone': 'UTC'  # Adjust if necessary.
+        }
+    }
+
+    try:
+        created_event = service.events().insert(
+            calendarId=CALENDAR_ID,
+            body=event_body
+        ).execute()
+        return jsonify({
+            'message': 'Event created successfully',
+            'event': created_event
+        }), 201
+    except Exception as e:
+        return jsonify({'error': f'Failed to create event: {str(e)}'}), 500
+    
+def upload_image_to_wix(image_data):
+    # If your incoming image data is base64 encoded, decode it:
+    # image_bytes = base64.b64decode(image_data)
+    # Otherwise, if it's already in binary form, you can use it directly.
+    image_bytes = image_data  # adjust this as needed
+    # Replace with the actual WIX API endpoint URL
+    wix_url = "https://api.wix.com/upload"  # Placeholder URL
+    headers = {
+        "Authorization": "Bearer YOUR_WIX_API_TOKEN"  # Replace with your actual API token
+    }
+    # Create a files dict. Adjust the tuple (filename, file content, mime type) as needed.
+    files = {
+        "file": ("image.png", image_bytes, "image/png")
+    }
+    response = requests.post(wix_url, headers=headers, files=files)
+    response.raise_for_status()  # Raise an error if the upload failed
+    # Assuming WIX returns a JSON with the uploaded image URL in a key like "url"
+    uploaded_url = response.json().get("url")
+    if not uploaded_url:
+        raise Exception("Upload failed: No URL returned from WIX")
+    return uploaded_url
 if __name__ == '__main__':
     app.run(debug=True)
