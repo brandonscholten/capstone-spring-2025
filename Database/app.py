@@ -543,7 +543,8 @@ def create_calendar_event():
         }), 201
     except Exception as e:
         return jsonify({'error': f'Failed to create event: {str(e)}'}), 500
-    
+
+
 def upload_image_to_wix(image_data):
     # If your incoming image data is base64 encoded, decode it:
     # image_bytes = base64.b64decode(image_data)
