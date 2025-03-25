@@ -18,6 +18,8 @@ from discord.ext import commands
 from discord import app_commands
 import requests
 from dotenv import load_dotenv, dotenv_values
+from dateutil import parser
+from datetime import datetime
 import os
 import typing
 import re
@@ -167,10 +169,67 @@ class Messages(commands.Cog):
         game_description = None
         game_max_players = game_max_players
 
-        #Function to ensure the date and time are valid formats for ISO8601
+        print(f"The games date: f{game_date}")
+
+
+        #Function to ensure the date is a valid format for ISO8601
         def validISO8601Date(date):
             print("Checking Date!")
 
+            try:
+                #Ensure the date is in ISO8601 format
+                parsedDate = parser.isoparse(date)
+
+                #Now ensure its just a date in the specific format: YYYY-MM-DD
+                if parsedDate.strftime("%Y-%m-%d") != date:
+                    return False
+            except ValueError:
+                return False
+
+            #Default True, execption will catch the issue
+            return True
+
+        #Function to ensure the time is a valid format for ISO8601
+        def validISO8601Time(time):
+            print("Checking Time!")
+
+            try:
+                #Convert the time string to 24 hr base, ISO8601 only works on 24 hr based, not 12 hr based
+                time24Hr = datetime.strptime(time, "%I:%M %p")
+
+                #Now make the 24 hr time into a valid format for the isoparse
+                isoTime = time24Hr.strftime("%H:%M")
+
+                print(f"isoTime: {isoTime}")
+
+                #Ensure the date is in ISO8601 format
+                parsedTime= parser.isoparse(isoTime)
+
+                #Now ensure its just a time in the specific format: hh:mm{AM/PM}
+                #Give the date given to allow for the check to occur, only the time is
+                #being looked at here
+                if parsedTime.strftime(f"{game_date}T%I:%M%p") != time:
+                    print("Not in valid time format")
+                    return False
+            except ValueError as e:
+                print(f"Converting to ISO8601 error: {e}")
+                return False
+
+            #Default True, exception will catch the issue
+            return True
+
+
+        #Will be used to ensure a int is given for the number of players
+        def validPlayerInteger(numOfPlayers):
+            print("Checking player numbers")
+
+            try: 
+                int(numOfPlayers)
+            except ValueError:
+                return False
+        
+            return True
+                
 
         #print(event_time)
 
@@ -223,7 +282,7 @@ class Messages(commands.Cog):
              return message.author == usersObject and message.channel == thread
 
             #Prompt for the name
-            await thread.send("Please send the max number of players for your game")
+            await thread.send("Please send the max number of players for your game (NOTE: Games with 10 or more max players will be required to rent the back room)")
 
             #Now try and wait for the user to respond in 60 seconds, if nothing, then error out
             try:
@@ -251,120 +310,219 @@ class Messages(commands.Cog):
                 thread.send("Timeout reached, please try creating an game again")
 
 
-        #Ask if the person would like to book the private room for the event?
-        privateRoomWanted = await thread.send("Would you like to book a private room for the game (Can do half and full room)? \n\n 👍 - Yes \n\n 👎- No ")
-
-        #Grab the message to then add the valid reactions to make it easier on the user
-        # = await interaction.original_response()
-
-        #Adds in the options for valid reactions
-        await privateRoomWanted.add_reaction("👍")
-        await privateRoomWanted.add_reaction("👎")
-
-        #Await for the user to react to the message
-        try:
-            reaction, user = await self.bot.wait_for('reaction_add', timeout=60)
-            if str(reaction.emoji) == "👍":
-                #await thread.send("If you would like to book the backroom for this event, please visit one of the two links below:\n HALF ROOM \n FULL ROOM")
-                privateRoomRequest = True
-            elif str(reaction.emoji) == "👎":
-                privateRoomRequest = False
+        #Date validation
+        #This will be looped so then it keeps asking for valid input to ensure ISO8601 is met
+        #Message checker to ensure the proper channel and user that sends a response is picked up
+        def gameDateChecker(message):
+             return message.author == usersObject and message.channel == thread
 
 
-            #
-        except TimeoutError:
-            await thread.send("Time out awaiting for a reaction, please try again")
+
+        while (True):
+            await thread.send("Test While Loop")
+             
+            #This will run the checker only if the date was already provided
+            if game_date != None:
+                game_date = game_date.content
+                game_date_valid = validISO8601Date(game_date)
+                print("date provided")
+            else:
+                print("NO date provided")
+
+                #Now ask for the date since there is none there
+                await thread.send("Please enter your games date (format: YYYY-MM-DD)")
+
+                #Wait for their response
+                try:
+                    response = await self.bot.wait_for("message", timeout=60, check=gameDateChecker)
+
+                    #Now set the date to what was received from the user
+                    game_date = response.content
+                    print(game_date)
+                except TimeoutError:
+                    print("Timeout")
+
+            print(f"valid ISO7601?: {validISO8601Date(game_date)}")
+            if validISO8601Date(game_date) == True:
+                #Valid date, so then store and break
+                print(f"Game date of {game_date} is valid!")
+                break
+            elif validISO8601Date(game_date) == False:
+                #Clear the date after this point, because it is not valid
+                #Would have already broke out if it was
+                game_date = None
+
 
         
-        
-        
-        await interaction.followup.send("Thank you for scheduling your game, the thread is now locked!\n An admin will approve or deny your request")
+        #Now validate the time to ensure it is a valid time
+        #This will be looped so then it keeps asking for valid input to ensure ISO8601 is met
+        #Message checker to ensure the proper channel and user that sends a response is picked up
+        def gameTimeChecker(message):
+             return message.author == usersObject and message.channel == thread
+
+
+
+        while (True):
+            await thread.send("Test While Loop")
+             
+            #This will run the checker only if the time was already provided
+            if game_time != None:
+                game_time = game_time.content
+                game_time_valid = validISO8601Time(game_time)
+                print("time provided")
+            else:
+                print("NO time provided")
+
+                #Now ask for the time since there is none there
+                await thread.send("Please enter your game's time (format: HH:MM {AM/PM}, example 8:00 AM)")
+
+                #Wait for their response
+                try:
+                    response = await self.bot.wait_for("message", timeout=60, check=gameTimeChecker)
+
+                    #Now set the time to what was received from the user
+                    game_time = response.content
+                    print(game_time)
+                except TimeoutError:
+                    print("Timeout")
+
+            print(f"valid ISO7601?: {validISO8601Time(game_time)}")
+            if validISO8601Time(game_time) == True:
+                #Valid time, so then store and break
+                print(f"Game time of {game_time} is valid!")
+                break
+            elif validISO8601Time(game_time) == False:
+                #Clear the time after this point, because it is not valid
+                #Would have already broke out if it was
+                game_time = None
+
+
+        #
+        # Parties 10 or larger are required to rent out the back room,
+        # Make an auto yes if 10 or larger
+        #
+        if game_max_players >= 10:
+            privateRoomWanted = True
+        else:
+
+
+            #Ask if the person would like to book the private room for the event?
+            privateRoomWanted = await thread.send("Would you like to book a private room for the game (Can do half and full room)? \n\n 👍 - Yes \n\n 👎- No ")
+
+            #Grab the message to then add the valid reactions to make it easier on the user
+            # = await interaction.original_response()
+
+            #Adds in the options for valid reactions
+            await privateRoomWanted.add_reaction("👍")
+            await privateRoomWanted.add_reaction("👎")
+
+            #Await for the user to react to the message
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60)
+                if str(reaction.emoji) == "👍":
+                    #await thread.send("If you would like to book the backroom for this event, please visit one of the two links below:\n HALF ROOM \n FULL ROOM")
+                    privateRoomRequest = True
+                elif str(reaction.emoji) == "👎":
+                    privateRoomRequest = False
+
+
+                #
+            except TimeoutError:
+                await thread.send("Time out awaiting for a reaction, please try again")
+
+            
+            
+            if privateRoomWanted == True:
+                await interaction.followup.send("Thank you for scheduling your game, the thread is now locked!\n An admin will approve or deny your request for the private room")
+            else:
+                await interaction.followup.send("Thank you for scheduling your game, the thread is now locked!\n An reminder will be sent an hour before your game")
 
         #Ensure no one can edit the thread
         await thread.edit(locked=True)
 
         #Remove them from the thread
-        #await thread.remove_user(usersObject)
+        await thread.remove_user(usersObject)
 
+        #Delete thread
+        await thread.delete()
 
         #
-        #  Admin channel message for game approval
+        #  Admin channel message for game approval ONLY IF PRIVATE ROOM IS WANTED
         #
+        if privateRoomWanted:
 
-        #We need to message the admin channel with the request
-        #TODO: REPLACE THE ADMIN CHANNEL KEY IT PULLS WITH BOARD & BEVY'S CURRENTLY USING A TEST ONE (THE DEV DISCORD SERVER)
-        gameApprovalChanel = await self.bot.fetch_channel(os.getenv("TEST_ADMIN_CHANNEL"))
+         #We need to message the admin channel with the request
+         #TODO: REPLACE THE ADMIN CHANNEL KEY IT PULLS WITH BOARD & BEVY'S CURRENTLY USING A TEST ONE (THE DEV DISCORD SERVER)
+         gameApprovalChanel = await self.bot.fetch_channel(os.getenv("TEST_ADMIN_CHANNEL"))
 
-        #Build the Admin channel message for approvals:
-        approvalMessage = f' The user {usersName} is requesting the following game, details are below\n'
-        approvalMessage += f'* Game Name: {game_name.content}\n'
-        approvalMessage += f'* Max Number Of Players: {game_max_players.content}\n'
-        approvalMessage += f'* Description: \n {game_description.content}\n'
-        approvalMessage += f'* Private Room Requested?: {privateRoomRequest}'
+         #Build the Admin channel message for approvals:
+         approvalMessage = f' The user {usersName} is requesting the following game, details are below\n'
+         approvalMessage += f'* Game Name: {game_name.content}\n'
+         approvalMessage += f'* Max Number Of Players: {game_max_players.content}\n'
+         approvalMessage += f'* Description: \n {game_description.content}\n'
+         approvalMessage += f'* Private Room Requested?: {privateRoomRequest}'
 
-        gameApprovalMessage = await gameApprovalChanel.send(approvalMessage)
+         gameApprovalMessage = await gameApprovalChanel.send(approvalMessage)
 
-        denyMessageReason = None
+         denyMessageReason = None
 
-        #Now add the interactions to the event
-        await gameApprovalMessage.add_reaction('👍')
-        await gameApprovalMessage.add_reaction('👎')
+         #Now add the interactions to the event
+         await gameApprovalMessage.add_reaction('👍')
+         await gameApprovalMessage.add_reaction('👎')
 
-        def gameApprovalCheck(reaction, channel):
-                print("doing the check!")
-                print(f'Channel: {channel}')
-                return reaction.message.id == gameApprovalMessage.id
+         def gameApprovalCheck(reaction, channel):
+            print("doing the check!")
+            print(f'Channel: {channel}')
+            return reaction.message.id == gameApprovalMessage.id
 
-        try:
-           
+         try:
+            reaction, channel = await self.bot.wait_for('reaction_add', check=gameApprovalCheck)
+            if str(reaction.emoji) == '👍':
+             print("Thumbs up!!!")
+             #Now dm the requester to tell them it has been approved
+             await usersObject.send(f"Your request has been approved for {game_date} at {game_time}.\n A reminder 1 hour before the event will be directly sent to you.")
+            elif str(reaction.emoji) == '👎':
 
-           reaction, channel = await self.bot.wait_for('reaction_add', check=gameApprovalCheck)
-           if str(reaction.emoji) == '👍':
-            print("Thumbs up!!!")
-            #Now dm the requester to tell them it has been approved
-            await usersObject.send(f"Your request has been approved for {game_date} at {game_time}.\n A reminder 1 hour before the event will be directly sent to you.")
-           elif str(reaction.emoji) == '👎':
+             optionalDenyMessagePrompt = await gameApprovalMessage.reply("Would you like to send a reason for denying the event?")
 
-               optionalDenyMessagePrompt = await gameApprovalMessage.reply("Would you like to send a reason for denying the event?")
+             #Add the reactions
+             await optionalDenyMessagePrompt.add_reaction("👍")
+             await optionalDenyMessagePrompt.add_reaction("👎")
 
-               #Add the reactions
-               await optionalDenyMessagePrompt.add_reaction("👍")
-               await optionalDenyMessagePrompt.add_reaction("👎")
+             try:
+              denyMessageReasonReaction, user = await self.bot.wait_for("reaction_add")
+
+              print(denyMessageReasonReaction.emoji)
+
+              if str(denyMessageReasonReaction.emoji) == '👍':
+               #Collect the reason
+               await optionalDenyMessagePrompt.reply("Please send your reason")
 
                try:
-                   denyMessageReasonReaction, user = await self.bot.wait_for("reaction_add")
-
-                   print(denyMessageReasonReaction.emoji)
-
-                   if str(denyMessageReasonReaction.emoji) == '👍':
-                     #Collect the reason
-                     await optionalDenyMessagePrompt.reply("Please send your reason")
-
-                     try:
-                      def denyMessageResponseCheck(message):
-                        return message.author == user and message.channel == gameApprovalMessage.channel
-                            
-                      denyMessageReason = await self.bot.wait_for('message', timeout=60, check=denyMessageResponseCheck)
-                      print(f'Deny message reason in try: {denyMessageReason}')
-                     except TimeoutError:
-                                thread.send("Timeout reached, sending rejection with no reason")
-               except Exception as e:
-                   print(f'DENIAL MESSAGE ERROR: {e}')       
-               
+                 def denyMessageResponseCheck(message):
+                  return message.author == user and message.channel == gameApprovalMessage.channel
+                                    
+                 denyMessageReason = await self.bot.wait_for('message', timeout=60, check=denyMessageResponseCheck)
+                 print(f'Deny message reason in try: {denyMessageReason}')
+               except TimeoutError:
+                 thread.send("Timeout reached, sending rejection with no reason")
+             except Exception as e:
+               print(f'DENIAL MESSAGE ERROR: {e}')       
+                    
                print(denyMessageReason)
 
-               #Now print a follow-up message, asking for an optional reason
+            #Now print a follow-up message, asking for an optional reason
 
-               denialMessage = "Your request has been **denied**"
+            denialMessage = "Your request has been **denied**"
 
-               if denyMessageReason != None:
-                 #There is a deny message, then append it to the string
-                 denialMessage += f', please find the reason below \n{denyMessageReason.content}'
-                
-               #Now send the message
-               await usersObject.send(denialMessage)
-               
-        except Exception as e:
+            if denyMessageReason != None:
+                #There is a deny message, then append it to the string
+                denialMessage += f', please find the reason below \n{denyMessageReason.content}'
+                        
+                #Now send the message
+                await usersObject.send(denialMessage)
+                    
+         except Exception as e:
             print(f'ERROR: {e}')
 
         #Make a function to handle a check to ensure the correct DM id is used for interaction
