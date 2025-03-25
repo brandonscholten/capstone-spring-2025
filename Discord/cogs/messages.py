@@ -20,6 +20,7 @@ import requests
 from dotenv import load_dotenv, dotenv_values
 from dateutil import parser
 from datetime import datetime
+import json
 import os
 import typing
 import re
@@ -237,12 +238,12 @@ class Messages(commands.Cog):
         
 
         #Send a message to create a thread on (have to without the server being Nitro boosted)
-        threadStarter = (await interaction.response.send_message("Creating a thread to schedule, please open the thread to continue (The thread will be locked after)")).resource
+        threadStarter = (await interaction.response.send_message("Creating a thread to schedule, please open the thread to continue (The thread will be deleted after)")).resource
 
         #
         #   Thread creation
         #
-        thread = await threadStarter.create_thread(name="Test Thread")
+        thread = await threadStarter.create_thread(name=f"{usersName}'s Game Thread")
         
         #Add the user to the thread
         await thread.add_user(usersObject)
@@ -269,29 +270,61 @@ class Messages(commands.Cog):
             except TimeoutError:
                 thread.send("Timeout reached, please try creating an game again")
 
+
+
         #
         #Ask for the max number of players of the event if it was not filled out in the command
         #
-        def isPlayerMaxAInt(maxPlayers):
-            return type(maxPlayers) == int
 
 
-        print(game_max_players)
-        if game_max_players == None:
-            def maxPlayersCheck(message):
+        # print(game_max_players)
+        # if game_max_players == None:
+        #     def maxPlayersCheck(message):
+        #      return message.author == usersObject and message.channel == thread
+
+        #     #Prompt for the name
+        #     await thread.send("Please send the max number of players for your game (NOTE: Games with 10 or more max players will be required to rent the back room)")
+
+        #     #Now try and wait for the user to respond in 60 seconds, if nothing, then error out
+        #     try:
+        #         maxNumberOfPlayers = await self.bot.wait_for('message', timeout=60, check=maxPlayersCheck)
+        #         game_max_players = maxNumberOfPlayers
+        #         #print("Collected the game name!")
+        #     except TimeoutError:
+        #         thread.send("Timeout reached, please try creating an game again")
+
+
+        def maxPlayersCheck(message):
              return message.author == usersObject and message.channel == thread
 
-            #Prompt for the name
-            await thread.send("Please send the max number of players for your game (NOTE: Games with 10 or more max players will be required to rent the back room)")
 
-            #Now try and wait for the user to respond in 60 seconds, if nothing, then error out
-            try:
-                maxNumberOfPlayers = await self.bot.wait_for('message', timeout=60, check=maxPlayersCheck)
-                game_max_players = maxNumberOfPlayers
-                #print("Collected the game name!")
-            except TimeoutError:
-                thread.send("Timeout reached, please try creating an game again")
+        #Make a while loop to ensure the proper type
+        while True:
+            if game_max_players == None:
+                #No players were given as input
+                print(type(game_max_players))
 
+                #Now prompt the user for the max number of players
+                #Prompt for the name
+                await thread.send("Please send the max number of players for your game (NOTE: Games with 10 or more max players will be required to rent the back room)")
+
+                #Now try and wait for the user to respond in 60 seconds, if nothing, then error out
+                try:
+                    maxNumberOfPlayers = await self.bot.wait_for('message', timeout=60, check=maxPlayersCheck)
+                    print(maxNumberOfPlayers.content)
+                    game_max_players = maxNumberOfPlayers.content
+                    #print("Collected the game name!")
+                except TimeoutError:
+                    thread.send("Timeout reached, please try creating an game again")
+
+            #Now check if it can be casted as an int
+            if validPlayerInteger(game_max_players):
+                #True, so now just convert to int and then save it to the variable
+                game_max_players = int(game_max_players)
+                break
+            else:
+                #False, clear the variable to be None and reprompt
+                game_max_players = None
 
         #Collect the game description
         if game_description == None:
@@ -319,7 +352,6 @@ class Messages(commands.Cog):
 
 
         while (True):
-            await thread.send("Test While Loop")
              
             #This will run the checker only if the date was already provided
             if game_date != None:
@@ -357,44 +389,44 @@ class Messages(commands.Cog):
         #Now validate the time to ensure it is a valid time
         #This will be looped so then it keeps asking for valid input to ensure ISO8601 is met
         #Message checker to ensure the proper channel and user that sends a response is picked up
-        def gameTimeChecker(message):
-             return message.author == usersObject and message.channel == thread
+        # def gameTimeChecker(message):
+        #      return message.author == usersObject and message.channel == thread
 
 
 
-        while (True):
-            await thread.send("Test While Loop")
+        # while (True):
+        #     await thread.send("Test While Loop")
              
-            #This will run the checker only if the time was already provided
-            if game_time != None:
-                game_time = game_time.content
-                game_time_valid = validISO8601Time(game_time)
-                print("time provided")
-            else:
-                print("NO time provided")
+        #     #This will run the checker only if the time was already provided
+        #     if game_time != None:
+        #         game_time = game_time.content
+        #         game_time_valid = validISO8601Time(game_time)
+        #         print("time provided")
+        #     else:
+        #         print("NO time provided")
 
-                #Now ask for the time since there is none there
-                await thread.send("Please enter your game's time (format: HH:MM {AM/PM}, example 8:00 AM)")
+        #         #Now ask for the time since there is none there
+        #         await thread.send("Please enter your game's time (format: HH:MM {AM/PM}, example 8:00 AM)")
 
-                #Wait for their response
-                try:
-                    response = await self.bot.wait_for("message", timeout=60, check=gameTimeChecker)
+        #         #Wait for their response
+        #         try:
+        #             response = await self.bot.wait_for("message", timeout=60, check=gameTimeChecker)
 
-                    #Now set the time to what was received from the user
-                    game_time = response.content
-                    print(game_time)
-                except TimeoutError:
-                    print("Timeout")
+        #             #Now set the time to what was received from the user
+        #             game_time = response.content
+        #             print(game_time)
+        #         except TimeoutError:
+        #             print("Timeout")
 
-            print(f"valid ISO7601?: {validISO8601Time(game_time)}")
-            if validISO8601Time(game_time) == True:
-                #Valid time, so then store and break
-                print(f"Game time of {game_time} is valid!")
-                break
-            elif validISO8601Time(game_time) == False:
-                #Clear the time after this point, because it is not valid
-                #Would have already broke out if it was
-                game_time = None
+        #     print(f"valid ISO7601?: {validISO8601Time(game_time)}")
+        #     if validISO8601Time(game_time) == True:
+        #         #Valid time, so then store and break
+        #         print(f"Game time of {game_time} is valid!")
+        #         break
+        #     elif validISO8601Time(game_time) == False:
+        #         #Clear the time after this point, because it is not valid
+        #         #Would have already broke out if it was
+        #         game_time = None
 
 
         #
@@ -458,8 +490,9 @@ class Messages(commands.Cog):
          #Build the Admin channel message for approvals:
          approvalMessage = f' The user {usersName} is requesting the following game, details are below\n'
          approvalMessage += f'* Game Name: {game_name.content}\n'
-         approvalMessage += f'* Max Number Of Players: {game_max_players.content}\n'
+         approvalMessage += f'* Max Number Of Players: {game_max_players}\n'
          approvalMessage += f'* Description: \n {game_description.content}\n'
+         approvalMessage += f'* Date: \n {game_date}\n'
          approvalMessage += f'* Private Room Requested?: {privateRoomRequest}'
 
          gameApprovalMessage = await gameApprovalChanel.send(approvalMessage)
@@ -524,6 +557,33 @@ class Messages(commands.Cog):
                     
          except Exception as e:
             print(f'ERROR: {e}')
+
+
+        #
+        #   Send API endpoint request
+        #
+
+        #Now, after everything has been confirmed, build the JSON to be sent to the API
+        gameJSON = {}
+
+        #Add the key value pairs here
+
+        #name
+
+        #make the date string
+        dateStr = f"{game_date}T{game_time}"
+
+        #description
+
+        #max players
+
+        #creator
+
+        #rsvp players, be sure to include the create themselves, do this with DISCORD IDS
+
+
+        #Then send this off with requests
+        #requests.post()
 
         #Make a function to handle a check to ensure the correct DM id is used for interaction
 
