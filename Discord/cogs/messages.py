@@ -265,7 +265,7 @@ class Messages(commands.Cog):
             #Now try and wait for the user to respond in 60 seconds, if nothing, then error out
             try:
                 gameNameResponse = await self.bot.wait_for('message', timeout=60, check=gameNameCollectionCheck)
-                game_name = gameNameResponse
+                game_name = gameNameResponse.content
                 print("Collected the game name!")
             except TimeoutError:
                 thread.send("Timeout reached, please try creating an game again")
@@ -315,7 +315,12 @@ class Messages(commands.Cog):
                     game_max_players = maxNumberOfPlayers.content
                     #print("Collected the game name!")
                 except TimeoutError:
-                    thread.send("Timeout reached, please try creating an game again")
+                    await thread.send("Timeout reached, please try creating an game again")
+            else:
+                #Number was provided through the command arguments, so take its contents and assign it
+                print(type(game_max_players))
+                game_max_players = game_max_players
+                print(game_max_players)
 
             #Now check if it can be casted as an int
             if validPlayerInteger(game_max_players):
@@ -337,7 +342,7 @@ class Messages(commands.Cog):
             #Now try and wait for the user to respond in 60 seconds, if nothing, then error out
             try:
                 gameDescriptionResponse = await self.bot.wait_for('message', timeout=60, check=gameDescriptionCheck)
-                game_description = gameDescriptionResponse
+                game_description = gameDescriptionResponse.content
                 print("Collected the game name!")
             except TimeoutError:
                 thread.send("Timeout reached, please try creating an game again")
@@ -355,7 +360,7 @@ class Messages(commands.Cog):
              
             #This will run the checker only if the date was already provided
             if game_date != None:
-                game_date = game_date.content
+                game_date = game_date
                 game_date_valid = validISO8601Date(game_date)
                 print("date provided")
             else:
@@ -488,12 +493,12 @@ class Messages(commands.Cog):
          gameApprovalChanel = await self.bot.fetch_channel(os.getenv("TEST_ADMIN_CHANNEL"))
 
          #Build the Admin channel message for approvals:
-         approvalMessage = f' The user {usersName} is requesting the following game, details are below\n'
-         approvalMessage += f'* Game Name: {game_name.content}\n'
+         approvalMessage = f' The user {usersName} is requesting the following game, details are below, react to approve or deny the request\n'
+         approvalMessage += f'* Game Name: {game_name}\n'
          approvalMessage += f'* Max Number Of Players: {game_max_players}\n'
-         approvalMessage += f'* Description: \n {game_description.content}\n'
+         approvalMessage += f'* Description: \n {game_description}\n'
          approvalMessage += f'* Date: \n {game_date}\n'
-         approvalMessage += f'* Private Room Requested?: {privateRoomRequest}'
+         approvalMessage += f'* Private Room Requested?: {privateRoomWanted}'
 
          gameApprovalMessage = await gameApprovalChanel.send(approvalMessage)
 
@@ -514,6 +519,8 @@ class Messages(commands.Cog):
              print("Thumbs up!!!")
              #Now dm the requester to tell them it has been approved
              await usersObject.send(f"Your request has been approved for {game_date} at {game_time}.\n A reminder 1 hour before the event will be directly sent to you.")
+            
+             await usersObject.send(f"Please ensure you pay for your private room reservation prior to your event start time using the links below! \n * Half Room:  \n * Full Room: ")
             elif str(reaction.emoji) == '👎':
 
              optionalDenyMessagePrompt = await gameApprovalMessage.reply("Would you like to send a reason for denying the event?")
