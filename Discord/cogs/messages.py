@@ -164,11 +164,14 @@ class Messages(commands.Cog):
         usersName = interaction.user.name
         usersObject = await self.bot.fetch_user(usersID)
         privateRoomRequest = False
+        halfPrivateRoom = False
         game_date = game_date
         game_time = game_time
         game_name = game_name
         game_description = None
         game_max_players = game_max_players
+        firstLastName = None
+
 
         print(f"The games date: f{game_date}")
 
@@ -439,7 +442,50 @@ class Messages(commands.Cog):
         # Make an auto yes if 10 or larger
         #
         if game_max_players >= 10:
+
             privateRoomWanted = True
+
+            #Ask if the person would like to book the private room for the event?
+            halfOrFullRoom = await thread.send("For the private room (Room required with games of 10 or more people), full or half? \n\n 🟩 - Full \n\n 🟥- Half ")
+
+            #Grab the message to then add the valid reactions to make it easier on the user
+            # = await interaction.original_response()
+
+            #Adds in the options for valid reactions
+            await halfOrFullRoom.add_reaction("🟩")
+            await halfOrFullRoom.add_reaction("🟥")
+
+            #Await for the user to react to the message
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60)
+                if str(reaction.emoji) == "🟩":
+                    #Not wanting half, wanting full
+                    halfPrivateRoom = False
+                elif str(reaction.emoji) == "🟥":
+                    #Wanting half not full
+                    halfPrivateRoom = True
+
+
+                #
+            except TimeoutError:
+                await thread.send("Time out awaiting for a reaction, please try again")
+
+
+            #Now grab the users first and last name to allow for booking to be matched with actual store receipt
+            def firstLastNameCheck(message):
+                return message.author == usersObject and message.channel == thread
+
+            #Prompt for the name
+            await thread.send("Please send your first and last name, this will be used to confirm you have paid once you arrive for your private room booking:")
+
+            #Now try and wait for the user to respond in 60 seconds, if nothing, then error out
+            try:
+                firstLastNameResponse = await self.bot.wait_for('message', timeout=60, check=firstLastNameCheck)
+                firstLastName = firstLastNameResponse.content
+                print("Collected First and Last name")
+            except TimeoutError:
+                thread.send("Timeout reached, please try creating an game again")
+
         else:
 
 
@@ -469,7 +515,56 @@ class Messages(commands.Cog):
 
             
             
-            if privateRoomWanted == True:
+            if privateRoomRequest == True:
+                #Ask if the person would like to book the private room for the event?
+                halfOrFullRoom = await thread.send("For the private room (Room required with games of 10 or more people), full or half? \n\n 🟩 - Full \n\n 🟥- Half ")
+
+                #Grab the message to then add the valid reactions to make it easier on the user
+                # = await interaction.original_response()
+
+                #Adds in the options for valid reactions
+                await halfOrFullRoom.add_reaction("🟩")
+                await halfOrFullRoom.add_reaction("🟥")
+
+                #Await for the user to react to the message
+                try:
+                    reaction, user = await self.bot.wait_for('reaction_add', timeout=60)
+                    if str(reaction.emoji) == "🟩":
+                        #Not wanting half, wanting full
+                        halfPrivateRoom = False
+                    elif str(reaction.emoji) == "🟥":
+                        #Wanting half not full
+                        halfPrivateRoom = True
+
+
+
+                #
+                except TimeoutError:
+                    await thread.send("Time out awaiting for a reaction, please try again")
+
+
+                #Now grab the users first and last name to allow for booking to be matched with actual store receipt
+                def firstLastNameCheck(message):
+                    return message.author == usersObject and message.channel == thread
+
+                #Prompt for the name
+                await thread.send("Please send your first and last name, this will be used to confirm you have paid once you arrive for your private room booking:")
+
+                #Now try and wait for the user to respond in 60 seconds, if nothing, then error out
+                try:
+                    firstLastNameResponse = await self.bot.wait_for('message', timeout=60, check=firstLastNameCheck)
+                    firstLastName = firstLastNameResponse.content
+                    print("Collected First and Last name")
+                except TimeoutError:
+                    thread.send("Timeout reached, please try creating an game again")
+
+
+
+
+
+
+
+
                 await interaction.followup.send("Thank you for scheduling your game, the thread is now locked!\n An admin will approve or deny your request for the private room")
             else:
                 await interaction.followup.send("Thank you for scheduling your game, the thread is now locked!\n An reminder will be sent an hour before your game")
@@ -498,7 +593,20 @@ class Messages(commands.Cog):
          approvalMessage += f'* Max Number Of Players: {game_max_players}\n'
          approvalMessage += f'* Description: \n {game_description}\n'
          approvalMessage += f'* Date: \n {game_date}\n'
-         approvalMessage += f'* Private Room Requested?: {privateRoomWanted}'
+         approvalMessage += f'* Private Room Requested?: {privateRoomWanted}\n'
+
+         print(f'Half room wants: {halfPrivateRoom}')
+         #Add in the full or half room booking
+         if halfPrivateRoom:
+             approvalMessage += "* Half Room Wanted\n"
+         else:
+             approvalMessage += "* Full Room Wanted\n"
+
+         #Add in their first and last name to the approval message:
+         approvalMessage += f'* Reservation Name: {firstLastName}'
+
+
+
 
          gameApprovalMessage = await gameApprovalChanel.send(approvalMessage)
 
@@ -520,7 +628,19 @@ class Messages(commands.Cog):
              #Now dm the requester to tell them it has been approved
              await usersObject.send(f"Your request has been approved for {game_date} at {game_time}.\n A reminder 1 hour before the event will be directly sent to you.")
             
-             await usersObject.send(f"Please ensure you pay for your private room reservation prior to your event start time using the links below! \n * Half Room:  \n * Full Room: ")
+             approvalDM = "Please ensure you pay for your private room reservation prior to your event start time using the links below! \n"
+             
+             if privateRoomWanted:
+                if halfPrivateRoom:
+                    #Half room is wanted
+                    approvalDM += f"Ensure you pay for the half room reservation at (use the name of {firstLastName} for the reservation): [HALFROOM]"
+                else:
+                    #Full room wanted
+                    approvalDM += f"Ensure you pay for the full room reservation at (use the name of {firstLastName} for the reservation): [FULL ROOM]"
+
+
+             await usersObject.send(approvalDM)
+
             elif str(reaction.emoji) == '👎':
 
              optionalDenyMessagePrompt = await gameApprovalMessage.reply("Would you like to send a reason for denying the event?")
@@ -559,8 +679,8 @@ class Messages(commands.Cog):
                 #There is a deny message, then append it to the string
                 denialMessage += f', please find the reason below \n{denyMessageReason.content}'
                         
-                #Now send the message
-                await usersObject.send(denialMessage)
+                #The DM command is here
+                await DMDiscordServerMember(self.bot, usersID, denialMessage)
                     
          except Exception as e:
             print(f'ERROR: {e}')
@@ -598,6 +718,9 @@ class Messages(commands.Cog):
     #async def 
         
 
+async def DMDiscordServerMember(bot, discordUserID, message):
+    userObject = await bot.fetch_user(discordUserID)
+    await userObject.send(message)
 
 async def setup(bot):
     await bot.add_cog(Messages(bot))
