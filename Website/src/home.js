@@ -23,19 +23,19 @@ export default function Home() {
     }, [activeTab]);
 
   const fetchEvents = async () => {
-    api.get("http://localhost:5000/events")
+    api.get("/events")
     .then((response) => setEvents(response.data))
     .catch((error) => console.error("Error fetching games:", error));
   };
 
   const fetchGames = async() => {
-    api.get("http://localhost:5000/games")
+    api.get("/games")
     .then((response) => setGames(response.data))
     .catch((error) => console.error("Error fetching games:", error));
   };
 
   const fetchBoardGames = async () => {
-    api.get("http://localhost:5000/catalogue")
+    api.get("/catalogue")
     .then((response) => setBoardGames(response.data))
     .catch((error) => console.error("Error fetching games:", error));
   };
