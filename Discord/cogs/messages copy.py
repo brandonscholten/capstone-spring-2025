@@ -307,7 +307,7 @@ class Messages(commands.Cog):
              return message.author == usersObject and message.channel == thread
 
 
-        #Date validation
+
         while (True):
              
             #This will run the checker only if the date was already provided
@@ -342,47 +342,86 @@ class Messages(commands.Cog):
                 break
 
 
-        def gameTimeChecker(message):
-            return message.author == usersObject and message.channel == thread
+            def gameTimeChecker(message):
+             return message.author == usersObject and message.channel == thread
 
+            #Collect time
+            while (True):
+             
+                #This will run the checker only if the date was already provided
+                if game_end_time != None:
+                    game_end_time = game_date
+                    print("date provided")
+                else:
+                    print("NO date provided")
 
-        #Collect time
-        while (True):
-            
-            #This will run the checker only if the date was already provided
-            if game_end_time != None:
-                game_end_time = game_end_time
-                print("time provided")
-            else:
-                print("NO time provided")
+                    #Now ask for the date since there is none there
+                    await thread.send("Please enter the end time for the game")
 
-                #Now ask for the date since there is none there
-                await thread.send("Please send the end time for the game")
+                    #Wait for their response
+                    try:
+                        response = await self.bot.wait_for("message", timeout=60, check=gameTimeChecker)
 
-                #Wait for their response
-                try:
-                    response = await self.bot.wait_for("message", timeout=60, check=gameTimeChecker)
+                        #Now set the date to what was received from the user
+                        game_end_time = response.content
+                        print(game_end_time)
+                    except TimeoutError:
+                        print("Timeout")
 
-                    #Now set the date to what was received from the user
-                    game_end_time = response.content
-                    print(game_end_time)
-                except TimeoutError:
-                    print("Timeout")
-
-            print(f"valid ISO7601?: {validISO8601Date(game_end_time)}")
-            if validISO8601Date(game_end_time) == None:
-                game_end_time = None
-                
-            else:
-                #Clear the date after this point, because it is not valid
-                #Would have already broke out if it was
-                game_end_time = validISO8601Date(game_end_time)
-                break
+                print(f"valid ISO7601?: {validISO8601Date(game_end_time)}")
+                if validISO8601Date(game_end_time) == None:
+                    game_end_time = None
+                    
+                else:
+                    #Clear the date after this point, because it is not valid
+                    #Would have already broke out if it was
+                    game_end_time = validISO8601Date(game_end_time)
+                    break
 
 
 
         
+        #Now validate the time to ensure it is a valid time
+        #This will be looped so then it keeps asking for valid input to ensure ISO8601 is met
+        #Message checker to ensure the proper channel and user that sends a response is picked up
+        # def gameTimeChecker(message):
+        #      return message.author == usersObject and message.channel == thread
 
+
+
+        # while (True):
+        #     await thread.send("Test While Loop")
+             
+        #     #This will run the checker only if the time was already provided
+        #     if game_time != None:
+        #         game_time = game_time.content
+        #         game_time_valid = validISO8601Time(game_time)
+        #         print("time provided")
+        #     else:
+        #         print("NO time provided")
+
+        #         #Now ask for the time since there is none there
+        #         await thread.send("Please enter your game's time (format: HH:MM {AM/PM}, example 8:00 AM)")
+
+        #         #Wait for their response
+        #         try:
+        #             response = await self.bot.wait_for("message", timeout=60, check=gameTimeChecker)
+
+        #             #Now set the time to what was received from the user
+        #             game_time = response.content
+        #             print(game_time)
+        #         except TimeoutError:
+        #             print("Timeout")
+
+        #     print(f"valid ISO7601?: {validISO8601Time(game_time)}")
+        #     if validISO8601Time(game_time) == True:
+        #         #Valid time, so then store and break
+        #         print(f"Game time of {game_time} is valid!")
+        #         break
+        #     elif validISO8601Time(game_time) == False:
+        #         #Clear the time after this point, because it is not valid
+        #         #Would have already broke out if it was
+        #         game_time = None
 
 
         #
@@ -540,8 +579,8 @@ class Messages(commands.Cog):
          approvalMessage += f'* Game Name: {game_name}\n'
          approvalMessage += f'* Max Number Of Players: {game_max_players}\n'
          approvalMessage += f'* Description: \n {game_description}\n'
-         approvalMessage += f'* Date and Start Time: \n {datetime.strftime(game_date, '%Y-%m-%d %I:%M %p')}\n'
-         approvalMessage += f'* End Time: \n {datetime.strftime(game_end_time, '%I:%M %p') }\n'
+         approvalMessage += f'* Date: \n {game_date}\n'
+         approvalMessage += f'* End Time: \n {game_end_time}\n'
          approvalMessage += f'* Private Room Requested?: {privateRoomWanted}\n'
 
          print(f'Half room wants: {halfPrivateRoom}')
