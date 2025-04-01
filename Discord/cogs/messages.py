@@ -391,7 +391,7 @@ class Messages(commands.Cog):
         #
         if game_max_players >= 10:
 
-            privateRoomWanted = True
+            privateRoomRequest = True
 
             #Ask if the person would like to book the private room for the event?
             halfOrFullRoom = await thread.send("For the private room (Room required with games of 10 or more people), full or half? \n\n 🟩 - Full \n\n 🟥- Half ")
@@ -529,57 +529,107 @@ class Messages(commands.Cog):
         #
         #  Admin channel message for game approval ONLY IF PRIVATE ROOM IS WANTED
         #
-        if privateRoomWanted:
-
-         #We need to message the admin channel with the request
-         #TODO: REPLACE THE ADMIN CHANNEL KEY IT PULLS WITH BOARD & BEVY'S CURRENTLY USING A TEST ONE (THE DEV DISCORD SERVER)
-         gameApprovalChanel = await self.bot.fetch_channel(os.getenv("TEST_ADMIN_CHANNEL"))
-
-         #Build the Admin channel message for approvals:
-         approvalMessage = f' The user {usersName} is requesting the following game, details are below, react to approve or deny the request\n'
-         approvalMessage += f'* Game Name: {game_name}\n'
-         approvalMessage += f'* Max Number Of Players: {game_max_players}\n'
-         approvalMessage += f'* Description: \n {game_description}\n'
-         approvalMessage += f'* Date and Start Time: \n {datetime.strftime(game_date, '%Y-%m-%d %I:%M %p')}\n'
-         approvalMessage += f'* End Time: \n {datetime.strftime(game_end_time, '%I:%M %p') }\n'
-         approvalMessage += f'* Private Room Requested?: {privateRoomWanted}\n'
-
-         print(f'Half room wants: {halfPrivateRoom}')
-         #Add in the full or half room booking
-         if halfPrivateRoom:
-             approvalMessage += "* Half Room Wanted\n"
-         else:
-             approvalMessage += "* Full Room Wanted\n"
-
-         #Add in their first and last name to the approval message:
-         approvalMessage += f'* Reservation Name: {firstLastName}'
+        if privateRoomRequest:
+            #Send the room request to the admin channel
+            await sendApprovalMessageToAdminChannel(self.bot, thread, None, usersID, usersName, game_name, game_description,
+                                              game_max_players, game_date, game_end_time, halfPrivateRoom, firstLastName, privateRoomRequest)
 
 
+        #
+        #   Send API endpoint request
+        #
+
+        #Now, after everything has been confirmed, build the JSON to be sent to the API
+        gameJSON = {}
+
+        #Add the key value pairs here
+
+        #name
+
+        #make the date string
+        dateStr = f"{game_date}T{game_time}"
+
+        #description
+
+        #max players
+
+        #creator
+
+        #rsvp players, be sure to include the create themselves, do this with DISCORD IDS
 
 
-         gameApprovalMessage = await gameApprovalChanel.send(approvalMessage)
+        #Then send this off with requests
+        #requests.post()
 
-         denyMessageReason = None
+        
+#Sends a DM (given in the parameter) to the discord user by their ID
+async def DMDiscordServerMember(bot, discordUserID, message):
+    userObject = await bot.fetch_user(discordUserID)
+    await userObject.send(message)
 
-         #Now add the interactions to the event
-         await gameApprovalMessage.add_reaction('👍')
-         await gameApprovalMessage.add_reaction('👎')
+async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, usersName, game_name, game_description, 
+                                            game_max_players, game_date, game_end_time, halfPrivateRoom, firstLastName, 
+                                            privateRoomRequest):
+    #We need to message the admin channel with the request
+    #TODO: REPLACE THE ADMIN CHANNEL KEY IT PULLS WITH BOARD & BEVY'S CURRENTLY USING A TEST ONE (THE DEV DISCORD SERVER)
+    gameApprovalChanel = await bot.fetch_channel(os.getenv("TEST_ADMIN_CHANNEL"))
 
-         def gameApprovalCheck(reaction, channel):
-            print("doing the check!")
-            print(f'Channel: {channel}')
-            return reaction.message.id == gameApprovalMessage.id
+    #Build the Admin channel message for approvals:
 
-         try:
-            reaction, channel = await self.bot.wait_for('reaction_add', check=gameApprovalCheck)
-            if str(reaction.emoji) == '👍':
-             print("Thumbs up!!!")
-             #Now dm the requester to tell them it has been approved
-             await usersObject.send(f"Your request has been approved for {game_date} at {game_time}.\n A reminder 1 hour before the event will be directly sent to you.")
+    #This will change to email or usersName based on if Discord or Website was used
+    if email == None:
+        #Discord bot was used
+        approvalMessage = f' The user {usersName} is requesting the following game, details are below, react to approve or deny the request\n'
+    elif usersDiscordID == None:
+        #Email was used
+        approvalMessage = f' The user with the email {email} is requesting the following game, details are below, react to approve or deny the request\n'
+
+    approvalMessage += f'* Game Name: {game_name}\n'
+    approvalMessage += f'* Max Number Of Players: {game_max_players}\n'
+    approvalMessage += f'* Description: \n {game_description}\n'
+    approvalMessage += f'* Date and Start Time: \n {game_date}\n'
+    approvalMessage += f'* End Time: \n {game_end_time }\n'
+
+    print(f'Half room wants: {halfPrivateRoom}')
+    #Add in the full or half room booking
+    if halfPrivateRoom:
+        approvalMessage += "* Half Room Wanted\n"
+    else:
+        approvalMessage += "* Full Room Wanted\n"
+
+    #Add in their first and last name to the approval message:
+    approvalMessage += f'* Reservation Name: {firstLastName}'
+
+    denyMessageReason = None
+
+    #Grab the user
+    usersObject = await bot.fetch_user(usersDiscordID)
+
+    #Send the message
+    gameApprovalMessage = await gameApprovalChanel.send(approvalMessage)
+
+    #Now add the interactions to the event
+    await gameApprovalMessage.add_reaction('👍')
+    await gameApprovalMessage.add_reaction('👎')
+
+    def gameApprovalCheck(reaction, channel):
+        print("doing the check!")
+        print(f'Channel: {channel}')
+        return reaction.message.id == gameApprovalMessage.id
+
+    try:
+        reaction, channel = await bot.wait_for('reaction_add', check=gameApprovalCheck)
+        if str(reaction.emoji) == '👍':
+            print("Thumbs up!!!")
             
-             approvalDM = "Please ensure you pay for your private room reservation prior to your event start time using the links below! \n"
-             
-             if privateRoomWanted:
+        
+            approvalDM = "Please ensure you pay for your private room reservation prior to your event start time using the links below! \n"
+        
+            #True -> Requesting a Private Room
+            #False -> Does not want a Private Room
+            if privateRoomRequest:
+                # True -> Half Room Booking Wanted
+                # False -> Full Room Booking Wanted
                 if halfPrivateRoom:
                     #Half room is wanted
                     approvalDM += f"Ensure you pay for the half room reservation at (use the name of {firstLastName} for the reservation): [HALFROOM]"
@@ -587,10 +637,20 @@ class Messages(commands.Cog):
                     #Full room wanted
                     approvalDM += f"Ensure you pay for the full room reservation at (use the name of {firstLastName} for the reservation): [FULL ROOM]"
 
+            #
+            #   Email or Discord DM code goes here
+            #
+            if email == None:
+                #Discord DM the user of their approval
+                #Now dm the requester to tell them it has been approved
+                await usersObject.send(f"Your request has been approved for {game_date} ending at {game_end_time}.\n A reminder 1 hour before the event will be directly sent to you.")
+                await usersObject.send(approvalDM)
+            elif email != None:
+                print ("Email the user their APPROVAL")
+                
+                #email code goes here
 
-             await usersObject.send(approvalDM)
-
-            elif str(reaction.emoji) == '👎':
+        elif str(reaction.emoji) == '👎':
 
              optionalDenyMessagePrompt = await gameApprovalMessage.reply("Would you like to send a reason for denying the event?")
 
@@ -620,56 +680,31 @@ class Messages(commands.Cog):
                     
                print(denyMessageReason)
 
-            #Now print a follow-up message, asking for an optional reason
+        #Now print a follow-up message, asking for an optional reason
 
-            denialMessage = "Your request has been **denied**"
+        denialMessage = "Your request has been **denied**"
 
-            if denyMessageReason != None:
-                #There is a deny message, then append it to the string
-                denialMessage += f', please find the reason below \n{denyMessageReason.content}'
-                        
-                #The DM command is here
-                await DMDiscordServerMember(self.bot, usersID, denialMessage)
+        if denyMessageReason != None:
+            #There is a deny message, then append it to the string
+            denialMessage += f', please find the reason below \n{denyMessageReason.content}'
                     
-         except Exception as e:
-            print(f'ERROR: {e}')
+            #Run a check here to sed if an email message or a discord DM is sent to
+            #the user to notify them of their denied game
+            
+            if email == None:
+                #The DM command is here
+                await DMDiscordServerMember(bot, usersDiscordID, denialMessage)
+            elif email != None:
+                print("Email the user their DENIAL")
+
+                #Put code to email user!!
+                    
+    except Exception as e:
+        print(f'ERROR: {e}')
 
 
-        #
-        #   Send API endpoint request
-        #
-
-        #Now, after everything has been confirmed, build the JSON to be sent to the API
-        gameJSON = {}
-
-        #Add the key value pairs here
-
-        #name
-
-        #make the date string
-        dateStr = f"{game_date}T{game_time}"
-
-        #description
-
-        #max players
-
-        #creator
-
-        #rsvp players, be sure to include the create themselves, do this with DISCORD IDS
 
 
-        #Then send this off with requests
-        #requests.post()
-
-        #Make a function to handle a check to ensure the correct DM id is used for interaction
-
-    #@app_commands.command()
-    #async def 
-        
-
-async def DMDiscordServerMember(bot, discordUserID, message):
-    userObject = await bot.fetch_user(discordUserID)
-    await userObject.send(message)
-
+#Adds the cog to the bot
 async def setup(bot):
     await bot.add_cog(Messages(bot))
