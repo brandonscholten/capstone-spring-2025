@@ -228,17 +228,17 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
       alert("Please select a room type and enter your email address.");
       return;
     }
+    
     const gameWithBooking = {
       ...pendingGameData,
-      roomBooking: {
-        type: bookingOption, // "half" or "full"
-        email: bookingEmail,
-      },
-    };
+      halfPrivateRoom: bookingOption, // "half" or "full"
+      email: bookingEmail,
+      firstLastName: organizer, // Assuming organizer is the name of the person booking
+      };
 
     try {
       // Send to a different API route for games requiring room booking.
-      await api.post("/games-with-booking", gameWithBooking);
+      await api.post("/games_with_room", gameWithBooking);
       // Optionally, you can show a success message here.
     } catch (error) {
       console.error("Error creating game with booking", error);

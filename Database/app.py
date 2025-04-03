@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from datetime import datetime
-
+import base64
 import os
 from dotenv import load_dotenv, dotenv_values
 
@@ -26,7 +26,7 @@ load_dotenv()
 # Update the connection string with your actual MySQL credentials and database name
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("MYSQL_DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
+WIX_API_KEY = os.getenv("WIX_API_KEY")
 # SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE')
 # SCOPES = ['https://www.googleapis.com/auth/calendar']
 # CALENDAR_ID = os.getenv('CALENDAR_ID')
@@ -301,6 +301,36 @@ def create_game():
     announce_game(new_game)
     return jsonify({"message": "Game created", "id": new_game.id}), 201
 
+
+
+@app.route('/games_with_room', methods=['POST'])
+def create_game_with_room():
+    data = request.get_json()
+    
+    hashed_password = bcrypt.hashpw(data.get("password").encode('utf-8'), bcrypt.gensalt()).decode('utf-8') if data.get("password") else None
+    
+    new_game = {
+        'title': data.get("title"),
+        'organizer': data.get("organizer"),
+        "start_time":datetime.fromisoformat(data.get("startTime")),
+        "end_time":datetime.fromisoformat(data.get("endTime")),
+        'description': data.get("description"),
+        'image': data.get("image"),
+        'players': data.get("players"),
+        'participants': data.get("participants"),
+        'email': data.get("email"),
+        'halfPrivateRoom': data.get("halfPrivateRoom"),
+        'firstLastName': data.get("firstLastName"),
+        'password': hashed_password,
+        'privateRoomRequest': True,
+    }
+    # async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersName, game_name, game_description, 
+    #                                         game_max_players, game_date, game_end_time, halfPrivateRoom, firstLastName, 
+    #                                         privateRoomRequest):
+    announce_game_with_room(new_game)
+    return jsonify({"message": "Game created"}), 201
+
+
 @app.route('/games', methods=['DELETE'])
 def delete_game_entry():
     data = request.get_json()
@@ -493,20 +523,21 @@ def announce_game_with_room(game):
     Publish game details to Redis so that the Discord bot can announce it.
     """
     message = json.dumps({
-        'id': game.id,
-        'title': game.title,
-        'organizer': game.organizer,
-        'start_time': game.start_time.isoformat(),
-        'end_time': game.end_time.isoformat(),
-        'description': game.description,
-        'players': game.players,
-        'participants': game.participants,
-        'catalogue': game.catalogue_id,
+        "title": game["title"],
+        "organizer": game["organizer"],
+        "start_time": game["start_time"].isoformat(),
+        "end_time": game["end_time"].isoformat(),
+        "description": game["description"],
+        "players": game["players"],
+        "participants": game["participants"],
+        "email": game["email"],
+        "halfPrivateRoom": game["halfPrivateRoom"],
+        "firstLastName": game["firstLastName"],
+        "privateRoomRequest": game["privateRoomRequest"]
     })
     # Publish the message to the "new_game" channel
     r.publish('new_game_with_room', message)
-       
-    
+
 # def check_event_conflict(start_iso, end_iso):
 #     """
 #     Check for existing events in the calendar that fall within the given time range.
@@ -565,27 +596,35 @@ def announce_game_with_room(game):
 #     except Exception as e:
 #         return jsonify({'error': f'Failed to create event: {str(e)}'}), 500
 
+def upload_image_to_wix(image_path):
+    # Read the image file in binary mode
+    with open(image_path, "rb") as f:
+        image_bytes = f.read()
 
-# def upload_image_to_wix(image_data):
-#     # If your incoming image data is base64 encoded, decode it:
-#     # image_bytes = base64.b64decode(image_data)
-#     # Otherwise, if it's already in binary form, you can use it directly.
-#     image_bytes = image_data  # adjust this as needed
-#     # Replace with the actual WIX API endpoint URL
-#     wix_url = "https://api.wix.com/upload"  # Placeholder URL
-#     headers = {
-#         "Authorization": "Bearer YOUR_WIX_API_TOKEN"  # Replace with your actual API token
-#     }
-#     # Create a files dict. Adjust the tuple (filename, file content, mime type) as needed.
-#     files = {
-#         "file": ("image.png", image_bytes, "image/png")
-#     }
-#     response = requests.post(wix_url, headers=headers, files=files)
-#     response.raise_for_status()  # Raise an error if the upload failed
-#     # Assuming WIX returns a JSON with the uploaded image URL in a key like "url"
-#     uploaded_url = response.json().get("url")
-#     if not uploaded_url:
-#         raise Exception("Upload failed: No URL returned from WIX")
-#     return uploaded_url
+    # Convert image bytes to a base64 string
+    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+    payload = {
+        "fileData": image_base64
+    }
+
+    # Replace with your actual Wix HTTP function URL
+    wix_http_url = "https://www.boardandbevy.com/_functions/uploadImage"
+
+    # Set headers if necessary (e.g., if you want to use an authorization token)
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    # Send the POST request
+    response = requests.post(wix_http_url, headers=headers, json=payload)
+    response.raise_for_status()
+
+    # Extract the uploaded image URL from the JSON response
+    uploaded_url = response.json().get("url")
+    if not uploaded_url:
+        raise Exception("Upload failed: No URL returned from Wix HTTP function")
+    return uploaded_url
+
+
 if __name__ == '__main__':
     app.run(debug=True)

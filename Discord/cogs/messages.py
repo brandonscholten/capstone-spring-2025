@@ -593,7 +593,7 @@ async def DMDiscordServerMember(bot, discordUserID, message):
     userObject = await bot.fetch_user(discordUserID)
     await userObject.send(message)
 
-async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, usersName, game_name, game_description, 
+async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersName, game_name, game_description, 
                                             game_max_players, game_date, game_end_time, halfPrivateRoom, firstLastName, 
                                             privateRoomRequest):
     #We need to message the admin channel with the request
@@ -644,7 +644,8 @@ async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, 
     denyMessageReason = None
 
     #Grab the user
-    usersObject = await bot.fetch_user(usersDiscordID)
+    if email == None:
+        usersObject = await bot.fetch_user(usersDiscordID)
 
     #Send the message
     gameApprovalMessage = await gameApprovalChanel.send(approvalMessage)
@@ -715,7 +716,8 @@ async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, 
                  denyMessageReason = await self.bot.wait_for('message', timeout=60, check=denyMessageResponseCheck)
                  print(f'Deny message reason in try: {denyMessageReason}')
                except TimeoutError:
-                 thread.send("Timeout reached, sending rejection with no reason")
+                   print("hello world")
+                #  thread.send("Timeout reached, sending rejection with no reason")
              except Exception as e:
                print(f'DENIAL MESSAGE ERROR: {e}')       
                     
@@ -725,13 +727,13 @@ async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, 
 
         denialMessage = "Your request has been **denied**"
 
-        if denyMessageReason != None:
+        if denyMessageReason != None: 
             #There is a deny message, then append it to the string
             denialMessage += f', please find the reason below \n{denyMessageReason.content}'
                     
             #Run a check here to sed if an email message or a discord DM is sent to
             #the user to notify them of their denied game
-            
+            print(email)
             if email == None:
                 #The DM command is here
                 await DMDiscordServerMember(bot, usersDiscordID, denialMessage)
@@ -739,10 +741,11 @@ async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, 
                 print("Email the user their DENIAL")
 
                 #Put code to email user!!
-                    
+            
     except Exception as e:
         print(f'ERROR: {e}')
 
+    
 
 
 
