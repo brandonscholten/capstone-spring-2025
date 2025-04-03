@@ -554,58 +554,18 @@ class Messages(commands.Cog):
         #
         if privateRoomRequest:
             #Send the room request to the admin channel
-            await Messages.sendApprovalMessageToAdminChannel(self.bot, thread, None, usersID, usersName, game_name, game_description,
+            await sendApprovalMessageToAdminChannel(self.bot, None, None, usersID, usersName, game_name, game_description,
                                               game_max_players, game_date, game_end_time, halfPrivateRoom, firstLastName, privateRoomRequest)
 
-
-        #
-        #   Send API endpoint request
-        #
-
-        #Now, after everything has been confirmed, build the JSON to be sent to the API
-        gameDict = {
-            "title": game_name,
-            "organizer": usersName,
-            "startTime": game_date,
-            "endTime": game_end_time,
-            "description": game_description,
-            "password": None,
-            "image": None,
-            "players": game_max_players,
-            "participants": usersID,
-            "catalogue_id": None
-        }
-
-        print(f'game_name type: {type(game_name)}')
-        print(f'usersName type: {type(usersName)}')
-        print(f'game_date type: {type(game_date)}')
-        print(f'game_date: {game_date}')
-        print(f'game_end_time type: {type(game_end_time)}')
-        print(f'game_end_time: {game_end_time}')
-        print(f'game_description type: {type(game_description)}')
-        print(f'maxNumberOfPlayers type: {type(maxNumberOfPlayers)}')
-        print(f'usersID type: {type(usersID)}')
-
-
-        #gameJSON = json.dump(gameDict, 'f')
-
-        #print(f'gameJSON type: {type(gameJSON)}')
-
-        #print(f'JSON BEFORE POST\n {gameJSON}')
-
-        #Then send this off with requests
-        r = requests.post("http://127.0.0.1:5000/games", json=gameDict)
-
-        #r.json()
     
 #Sends a DM (given in the parameter) to the discord user by their ID
 async def DMDiscordServerMember(bot, discordUserID, message):
     userObject = await bot.fetch_user(discordUserID)
     await userObject.send(message)
 
-async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, usersName, game_name, game_description, 
+async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersName, game_name, game_description, 
                                             game_max_players, game_date, game_end_time, halfPrivateRoom, firstLastName, 
-                                            privateRoomRequest):
+                                            privateRoomRequest, password):
     #We need to message the admin channel with the request
     #TODO: REPLACE THE ADMIN CHANNEL KEY IT PULLS WITH BOARD & BEVY'S CURRENTLY USING A TEST ONE (THE DEV DISCORD SERVER)
     gameApprovalChanel = await bot.fetch_channel(os.getenv("TEST_ADMIN_CHANNEL"))
@@ -722,10 +682,11 @@ async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, 
                  def denyMessageResponseCheck(message):
                   return message.author == user and message.channel == gameApprovalMessage.channel
                                     
-                 denyMessageReason = await self.bot.wait_for('message', timeout=60, check=denyMessageResponseCheck)
+                 denyMessageReason = await bot.wait_for('message', timeout=60, check=denyMessageResponseCheck)
                  print(f'Deny message reason in try: {denyMessageReason}')
                except TimeoutError:
-                 thread.send("Timeout reached, sending rejection with no reason")
+                 #thread.send("Timeout reached, sending rejection with no reason")
+                 print()
              except Exception as e:
                print(f'DENIAL MESSAGE ERROR: {e}')       
                     
@@ -744,7 +705,7 @@ async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, 
             
             if email == None:
                 #The DM command is here
-                await Messages.DMDiscordServerMember(bot, usersDiscordID, denialMessage)
+                await DMDiscordServerMember(bot, usersDiscordID, denialMessage)
             elif email != None:
                 print("Email the user their DENIAL")
 
@@ -752,6 +713,49 @@ async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, 
                     
     except Exception as e:
         print(f'ERROR: {e}')
+
+
+    
+    #
+    #   Send API endpoint request
+    #
+
+    #Now, after everything has been confirmed, build the JSON to be sent to the API
+    gameDict = {
+        "title": game_name,
+        "organizer": usersName,
+        "startTime": game_date,
+        "endTime": game_end_time,
+        "description": game_description,
+        "password": None,
+        "image": None,
+        "players": game_max_players,
+        "participants": usersID,
+        "catalogue_id": None
+    }
+
+    #Add the password 
+    if password != None:
+        updatedGameDict = {
+            "title": game_name,
+            "organizer": usersName,
+            "startTime": game_date,
+            "endTime": game_end_time,
+            "description": game_description,
+            "password": password,
+            "image": None,
+            "players": game_max_players,
+            "participants": usersID,
+            "catalogue_id": None
+        }
+        
+
+        gameDict.update(updatedGameDict)
+    
+    #Then send this off with requests
+    r = requests.post("http://127.0.0.1:5000/games", json=gameDict)
+
+        
 
 
 
