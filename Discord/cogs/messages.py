@@ -33,7 +33,18 @@ class Messages(commands.Cog):
 
     @app_commands.command(name="list_events", description="Lists games and events, allowing a user to RSVP")
     async def listevents(self, interaction: discord.Interaction):
-        # Temp list to hold items to list out the events
+        # Make the call to the API to get the events and games
+        games = requests.get('http://127.0.0.1:5000/games')
+        games = games.json()
+
+        print(games)
+
+        #Make a thread to allow for RSVPing
+        #Send a message to create a thread on (have to without the server being Nitro boosted)
+        threadStarter = (await interaction.response.send_message("Creating a thread to show the games scheduled")).resource
+
+        
+
         return
 
     @app_commands.command(name="list_games", description="Lists the current game collection of Board & Bevy")
@@ -331,7 +342,7 @@ class Messages(commands.Cog):
                 print("NO date provided")
 
                 #Now ask for the date since there is none there
-                await thread.send("Please enter your games date (format: YYYY-MM-DD)")
+                await thread.send("Please enter your games date (format: Today at 6PM, March 13, 2026 at 5:30PM, 6PM [Note: This will do the current day!])")
 
                 #Wait for their response
                 try:
@@ -369,7 +380,7 @@ class Messages(commands.Cog):
                 print("NO time provided")
 
                 #Now ask for the date since there is none there
-                await thread.send("Please send the end time for the game")
+                await thread.send("Please send the end time for the game (format: March 13th, 2026 at 6PM, Today at 9PM, 9PM [This will be for the current day at 9PM])")
 
                 #Wait for their response
                 try:
@@ -543,7 +554,7 @@ class Messages(commands.Cog):
         #
         if privateRoomRequest:
             #Send the room request to the admin channel
-            await sendApprovalMessageToAdminChannel(self.bot, thread, None, usersID, usersName, game_name, game_description,
+            await Messages.sendApprovalMessageToAdminChannel(self.bot, thread, None, usersID, usersName, game_name, game_description,
                                               game_max_players, game_date, game_end_time, halfPrivateRoom, firstLastName, privateRoomRequest)
 
 
@@ -586,8 +597,7 @@ class Messages(commands.Cog):
         r = requests.post("http://127.0.0.1:5000/games", json=gameDict)
 
         #r.json()
-
-        
+    
 #Sends a DM (given in the parameter) to the discord user by their ID
 async def DMDiscordServerMember(bot, discordUserID, message):
     userObject = await bot.fetch_user(discordUserID)
@@ -734,7 +744,7 @@ async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, 
             
             if email == None:
                 #The DM command is here
-                await DMDiscordServerMember(bot, usersDiscordID, denialMessage)
+                await Messages.DMDiscordServerMember(bot, usersDiscordID, denialMessage)
             elif email != None:
                 print("Email the user their DENIAL")
 
