@@ -484,7 +484,25 @@ def announce_game(game):
     # Publish the message to the "new_game" channel
     r.publish('new_game', message)
     
-    
+  
+def announce_game_with_room(game):
+    """
+    Publish game details to Redis so that the Discord bot can announce it.
+    """
+    message = json.dumps({
+        'id': game.id,
+        'title': game.title,
+        'organizer': game.organizer,
+        'start_time': game.start_time.isoformat(),
+        'end_time': game.end_time.isoformat(),
+        'description': game.description,
+        'players': game.players,
+        'participants': game.participants,
+        'catalogue': game.catalogue_id,
+    })
+    # Publish the message to the "new_game" channel
+    r.publish('new_game_with_room', message)
+       
     
 # def check_event_conflict(start_iso, end_iso):
 #     """

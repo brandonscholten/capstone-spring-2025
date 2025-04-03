@@ -55,7 +55,7 @@ def redis_subscriber():
     r = redis.Redis(host='localhost', port=6379, db=0)
     pubsub = r.pubsub()
     # Subscribe to both event and game channels
-    pubsub.subscribe('new_event', 'new_game')
+    pubsub.subscribe('new_event', 'new_game', 'new_game_with_room')
     return pubsub
 
 async def handle_new_event(bot, message):
@@ -127,6 +127,8 @@ async def handle_new_game(bot, message):
         embed.add_field(name="Catalogue", value=data.get('catalogue'), inline=False)
     
     await channel.send(embed=embed)
+    
+
 
 async def redis_listener(bot):
     """
@@ -145,9 +147,12 @@ async def redis_listener(bot):
                 channel_name = channel_name.decode('utf-8')
             if channel_name == 'new_event':
                 await handle_new_event(bot, message)
+            elif channel_name == 'new_game_with_room':
+                await handle_new_game(bot, message)
             elif channel_name == 'new_game':
                 await handle_new_game(bot, message)
         await asyncio.sleep(5)  # Increase sleep if precision is not critical
+
 
 def main():
     bot = asyncio.run(run_bot())
