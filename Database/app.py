@@ -11,9 +11,12 @@ from dotenv import load_dotenv
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from datetime import datetime
-import pytz
-import os
 
+import os
+from dotenv import load_dotenv, dotenv_values
+
+#Loads the env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -21,7 +24,7 @@ CORS(app)  # Enable CORS for all routes
 r = redis.Redis(host='localhost', port=6379, db=0)
 load_dotenv()
 # Update the connection string with your actual MySQL credentials and database name
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:Wooback1!@localhost:3306/botnbevy_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("MYSQL_DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE')

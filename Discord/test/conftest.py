@@ -53,10 +53,12 @@ async def setupBotTest():
         await bot.tree.sync()
         print("Bot is ready")
 
+    await bot._async_setup_hook()
+
     #load the cogs
     await load_cogs(bot)
 
-    await bot._async_setup_hook()
+    
     dpytest.configure(bot)
 
     yield bot
