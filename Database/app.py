@@ -7,6 +7,11 @@ import bcrypt
 from datetime import datetime, timedelta
 import redis
 import json
+import os
+from dotenv import load_dotenv, dotenv_values
+
+#Loads the env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -14,7 +19,7 @@ CORS(app)  # Enable CORS for all routes
 r = redis.Redis(host='localhost', port=6379, db=0)
 
 # Update the connection string with your actual MySQL credentials and database name
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:BOTNBEVY@localhost:3306/botnbevy_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("MYSQL_DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)

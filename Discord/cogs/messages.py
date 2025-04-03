@@ -26,11 +26,12 @@ import json
 import os
 import typing
 import re
+import pytz
 class Messages(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(name="list_events", description="Creates an event and allows users to RSVP")
+    @app_commands.command(name="list_events", description="Lists games and events, allowing a user to RSVP")
     async def listevents(self, interaction: discord.Interaction):
         # Temp list to hold items to list out the events
         return
@@ -175,12 +176,23 @@ class Messages(commands.Cog):
         firstLastName = None
         game_end_time = None
 
+        
+
 
         print(f"The games date: f{game_date}")
 
         def validISO8601Date(date):
-            dt = dateparser.parse(date)
+            dt = dateparser.parse(date,  settings={'TIMEZONE': 'US/Eastern'})
+
+            print(f'validISO8601Date parse: {dt}')
             if dt:
+                #Make it timezone aware!!
+                #This is key to getting the correctly adjusted UTC time from EST!
+                if dt.tzinfo is None:
+                    eastern_timeZone = pytz.timezone('US/Eastern')
+                    dt = eastern_timeZone.localize(dt)
+
+                print(f'ISO Format: {dt.isoformat()}')
                 return dt.isoformat()
             return None
             
@@ -540,26 +552,40 @@ class Messages(commands.Cog):
         #
 
         #Now, after everything has been confirmed, build the JSON to be sent to the API
-        gameJSON = {}
+        gameDict = {
+            "title": game_name,
+            "organizer": usersName,
+            "startTime": game_date,
+            "endTime": game_end_time,
+            "description": game_description,
+            "password": None,
+            "image": None,
+            "players": game_max_players,
+            "participants": usersID,
+            "catalogue_id": None
+        }
 
-        #Add the key value pairs here
+        print(f'game_name type: {type(game_name)}')
+        print(f'usersName type: {type(usersName)}')
+        print(f'game_date type: {type(game_date)}')
+        print(f'game_date: {game_date}')
+        print(f'game_end_time type: {type(game_end_time)}')
+        print(f'game_end_time: {game_end_time}')
+        print(f'game_description type: {type(game_description)}')
+        print(f'maxNumberOfPlayers type: {type(maxNumberOfPlayers)}')
+        print(f'usersID type: {type(usersID)}')
 
-        #name
 
-        #make the date string
-        dateStr = f"{game_date}T{game_time}"
+        #gameJSON = json.dump(gameDict, 'f')
 
-        #description
+        #print(f'gameJSON type: {type(gameJSON)}')
 
-        #max players
-
-        #creator
-
-        #rsvp players, be sure to include the create themselves, do this with DISCORD IDS
-
+        #print(f'JSON BEFORE POST\n {gameJSON}')
 
         #Then send this off with requests
-        #requests.post()
+        r = requests.post("http://127.0.0.1:5000/games", json=gameDict)
+
+        #r.json()
 
         
 #Sends a DM (given in the parameter) to the discord user by their ID
@@ -573,6 +599,21 @@ async def sendApprovalMessageToAdminChannel(bot, thread, email, usersDiscordID, 
     #We need to message the admin channel with the request
     #TODO: REPLACE THE ADMIN CHANNEL KEY IT PULLS WITH BOARD & BEVY'S CURRENTLY USING A TEST ONE (THE DEV DISCORD SERVER)
     gameApprovalChanel = await bot.fetch_channel(os.getenv("TEST_ADMIN_CHANNEL"))
+
+    
+    #Date conversions from UTC to EST
+
+    #1. Make the datetime object from the game date
+    game_date = datetime.fromisoformat(game_date)
+    game_end_time = datetime.fromisoformat(game_end_time)
+
+    #Convert to EST
+    game_date = game_date.astimezone(pytz.timezone('US/Eastern'))
+    game_end_time = game_end_time.astimezone(pytz.timezone('US/Eastern'))
+
+    #Formate the date and time to 12 hr
+    game_date = game_date.strftime("%m-%d-%Y %I:%M %p")
+    game_end_time = game_end_time.strftime("%m-%d-%Y %I:%M %p")
 
     #Build the Admin channel message for approvals:
 
