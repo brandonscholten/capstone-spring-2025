@@ -31,22 +31,6 @@ class Messages(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(name="list_events", description="Lists games and events, allowing a user to RSVP")
-    async def listevents(self, interaction: discord.Interaction):
-        # Make the call to the API to get the events and games
-        games = requests.get('http://127.0.0.1:5000/games')
-        games = games.json()
-
-        print(games)
-
-        #Make a thread to allow for RSVPing
-        #Send a message to create a thread on (have to without the server being Nitro boosted)
-        threadStarter = (await interaction.response.send_message("Creating a thread to show the games scheduled")).resource
-
-        
-
-        return
-
     @app_commands.command(name="list_games", description="Lists the current game collection of Board & Bevy")
     @app_commands.describe(
         sort_by="Sort by one of: name, players, difficulty, or time",
@@ -160,12 +144,18 @@ class Messages(commands.Cog):
         # Split the message if needed
         message_parts = split_message(gameString)
 
+        #Keep ahold of the last message that was sent
+        lastMessage = None
+
         # Send the messages as ephemeral
         # The first message uses response.send_message; subsequent ones are sent as follow-ups.
         await interaction.response.send_message(message_parts[0], ephemeral=True)
         for part in message_parts[1:]:
-            await interaction.followup.send(part, ephemeral=True)
+            lastMessage = await interaction.followup.send(part, ephemeral=True)
     
+        #Take the last message and add the interactions to them
+        await lastMessage.add_reaction("👍")
+        await lastMessage.add_reaction("👎")
     
     
     @app_commands.command(name="create_game", description="Creates an game and allows users to RSVP")
@@ -554,8 +544,8 @@ class Messages(commands.Cog):
         #
         if privateRoomRequest:
             #Send the room request to the admin channel
-            await sendApprovalMessageToAdminChannel(self.bot, None, None, usersID, usersName, game_name, game_description,
-                                              game_max_players, game_date, game_end_time, halfPrivateRoom, firstLastName, privateRoomRequest)
+            await sendApprovalMessageToAdminChannel(self.bot, None, usersID, usersName, game_name, game_description,
+                                              game_max_players, game_date, game_end_time, halfPrivateRoom, firstLastName, privateRoomRequest, None)
 
     
 #Sends a DM (given in the parameter) to the discord user by their ID
@@ -570,20 +560,23 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
     #TODO: REPLACE THE ADMIN CHANNEL KEY IT PULLS WITH BOARD & BEVY'S CURRENTLY USING A TEST ONE (THE DEV DISCORD SERVER)
     gameApprovalChanel = await bot.fetch_channel(os.getenv("TEST_ADMIN_CHANNEL"))
 
+    #Approval flag for the post
+    gameApproved = False
+
     
     #Date conversions from UTC to EST
 
     #1. Make the datetime object from the game date
-    game_date = datetime.fromisoformat(game_date)
-    game_end_time = datetime.fromisoformat(game_end_time)
+    game_date_formatted = datetime.fromisoformat(game_date)
+    game_end_time_formatted = datetime.fromisoformat(game_end_time)
 
     #Convert to EST
-    game_date = game_date.astimezone(pytz.timezone('US/Eastern'))
-    game_end_time = game_end_time.astimezone(pytz.timezone('US/Eastern'))
+    game_date_formatted = game_date_formatted.astimezone(pytz.timezone('US/Eastern'))
+    game_end_time_formatted = game_end_time_formatted.astimezone(pytz.timezone('US/Eastern'))
 
     #Formate the date and time to 12 hr
-    game_date = game_date.strftime("%m-%d-%Y %I:%M %p")
-    game_end_time = game_end_time.strftime("%m-%d-%Y %I:%M %p")
+    game_date_formatted = game_date_formatted.strftime("%m-%d-%Y %I:%M %p")
+    game_end_time_formatted = game_end_time_formatted.strftime("%m-%d-%Y %I:%M %p")
 
     #Build the Admin channel message for approvals:
 
@@ -598,8 +591,8 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
     approvalMessage += f'* Game Name: {game_name}\n'
     approvalMessage += f'* Max Number Of Players: {game_max_players}\n'
     approvalMessage += f'* Description: \n {game_description}\n'
-    approvalMessage += f'* Date and Start Time: \n {game_date}\n'
-    approvalMessage += f'* End Time: \n {game_end_time }\n'
+    approvalMessage += f'* Date and Start Time: \n {game_date_formatted}\n'
+    approvalMessage += f'* End Time: \n {game_end_time_formatted}\n'
 
     print(f'Half room wants: {halfPrivateRoom}')
     #Add in the full or half room booking
@@ -632,6 +625,8 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
         reaction, channel = await bot.wait_for('reaction_add', check=gameApprovalCheck)
         if str(reaction.emoji) == '👍':
             print("Thumbs up!!!")
+
+            gameApproved = True
             
         
             approvalDM = "Please ensure you pay for your private room reservation prior to your event start time using the links below! \n"
@@ -643,10 +638,10 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
                 # False -> Full Room Booking Wanted
                 if halfPrivateRoom:
                     #Half room is wanted
-                    approvalDM += f"Ensure you pay for the half room reservation at (use the name of {firstLastName} for the reservation): [HALFROOM]"
+                    approvalDM += f"Ensure you pay for the **half room** reservation at (use the name of {firstLastName} for the reservation): [Reservation Link](https://www.boardandbevy.com/product-page/half-room-reservation)"
                 else:
                     #Full room wanted
-                    approvalDM += f"Ensure you pay for the full room reservation at (use the name of {firstLastName} for the reservation): [FULL ROOM]"
+                    approvalDM += f"Ensure you pay for the **full room** reservation at (use the name of {firstLastName} for the reservation): [Reservation Link](https://www.boardandbevy.com/product-page/whole-backroom-reservation)"
 
             #
             #   Email or Discord DM code goes here
@@ -654,7 +649,7 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
             if email == None:
                 #Discord DM the user of their approval
                 #Now dm the requester to tell them it has been approved
-                await usersObject.send(f"Your request has been approved for {game_date} ending at {game_end_time}.\n A reminder 1 hour before the event will be directly sent to you.")
+                await usersObject.send(f"Your request has been approved for {game_date_formatted} ending at {game_end_time_formatted}.\n A reminder 1 hour before the event will be directly sent to you.")
                 await usersObject.send(approvalDM)
             elif email != None:
                 print ("Email the user their APPROVAL")
@@ -715,45 +710,47 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
         print(f'ERROR: {e}')
 
 
-    
-    #
-    #   Send API endpoint request
-    #
+    print(f"game_date type: {type(game_date)}")
 
-    #Now, after everything has been confirmed, build the JSON to be sent to the API
-    gameDict = {
-        "title": game_name,
-        "organizer": usersName,
-        "startTime": game_date,
-        "endTime": game_end_time,
-        "description": game_description,
-        "password": None,
-        "image": None,
-        "players": game_max_players,
-        "participants": usersID,
-        "catalogue_id": None
-    }
+    if gameApproved: 
+        #
+        #   Send API endpoint request
+        #
 
-    #Add the password 
-    if password != None:
-        updatedGameDict = {
+        #Now, after everything has been confirmed, build the JSON to be sent to the API
+        gameDict = {
             "title": game_name,
             "organizer": usersName,
             "startTime": game_date,
             "endTime": game_end_time,
             "description": game_description,
-            "password": password,
+            "password": None,
             "image": None,
             "players": game_max_players,
-            "participants": usersID,
+            "participants": usersDiscordID,
             "catalogue_id": None
         }
-        
 
-        gameDict.update(updatedGameDict)
-    
-    #Then send this off with requests
-    r = requests.post("http://127.0.0.1:5000/games", json=gameDict)
+        #Add the password 
+        if password != None:
+            updatedGameDict = {
+                "title": game_name,
+                "organizer": usersName,
+                "startTime": game_date,
+                "endTime": game_end_time,
+                "description": game_description,
+                "password": password,
+                "image": None,
+                "players": game_max_players,
+                "participants": usersID,
+                "catalogue_id": None
+            }
+            
+
+            gameDict.update(updatedGameDict)
+        
+        #Then send this off with requests
+        r = requests.post("http://127.0.0.1:5000/games", json=gameDict)
 
         
 
