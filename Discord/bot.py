@@ -73,6 +73,8 @@ async def handle_new_event(bot, message):
     # Replace with your actual Events channel ID
     EVENTS_CHANNEL_ID = 1352001770393571430
     channel = bot.get_channel(EVENTS_CHANNEL_ID)
+
+
     if channel is None:
         print("Events channel not found!")
         return
@@ -91,7 +93,14 @@ async def handle_new_event(bot, message):
     if data.get('participants'):
         embed.add_field(name="Participants", value=data.get('participants'), inline=False)
     
-    await channel.send(embed=embed)
+    gamePosting = await channel.send(embed=embed)
+
+    print(f'gamePosting type: {type(gamePosting)}')
+    print(f'gamePosting: {gamePosting}')
+
+    #Now add the interactions to the message
+    await gamePosting.add_interaction("👍")
+    await gamePosting.add_interaction("👎")
 
 async def handle_new_game(bot, message):
     """
@@ -126,7 +135,56 @@ async def handle_new_game(bot, message):
     if data.get('catalogue'):
         embed.add_field(name="Catalogue", value=data.get('catalogue'), inline=False)
     
-    await channel.send(embed=embed)
+    gamePosting = await channel.send(embed=embed)
+
+
+    print(f'gamePosting type: {type(gamePosting)}')
+    print(f'gamePosting: {gamePosting}')
+
+    #Now add the interactions to the message
+    await gamePosting.add_reaction("👍")
+    await gamePosting.add_reaction("👎")
+
+    #Make the check
+    def gameRSVPCheck(reaction, user):
+        return (
+            reaction.message.id == gamePosting.id
+            and user != bot.user
+            and str(reaction.emoji) in ["👍", "👎"]
+        )
+
+
+    try:
+        reaction, user = await bot.wait_for("reaction_add", check=gameRSVPCheck)
+
+        if str(reaction.emoji) == '👍':
+            print("RSVPing for the event")
+
+            #Check if a previous 👎 was put in, if so switch it to a 👍
+            
+            #Make the JSON
+
+            #Make the API call to add to the RSVP
+
+            #
+            # Schedule the reminder!
+            #
+
+
+        elif str(reaction.emoji) == '👎':
+            print("Not RSVping, or removing RSVP for the event")
+
+            #Check if a previous 👍 was put in, if so switch it to a 👎
+            #Unschedule the reminder
+
+
+            #Make the JSON
+
+            #Make the API call to remove the RSVP
+    except e:
+        print(f"RSVP Error: {e}")
+
+
 
 async def redis_listener(bot):
     """

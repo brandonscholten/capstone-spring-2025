@@ -149,13 +149,11 @@ class Messages(commands.Cog):
 
         # Send the messages as ephemeral
         # The first message uses response.send_message; subsequent ones are sent as follow-ups.
+        # Keep the last message sent as that will be the message to add interactions for RSVP functionality
         await interaction.response.send_message(message_parts[0], ephemeral=True)
         for part in message_parts[1:]:
-            lastMessage = await interaction.followup.send(part, ephemeral=True)
-    
-        #Take the last message and add the interactions to them
-        await lastMessage.add_reaction("👍")
-        await lastMessage.add_reaction("👎")
+            await interaction.followup.send(part, ephemeral=True)
+
     
     
     @app_commands.command(name="create_game", description="Creates an game and allows users to RSVP")
