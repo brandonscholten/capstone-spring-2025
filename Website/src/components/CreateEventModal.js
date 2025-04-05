@@ -116,32 +116,51 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
     }
   };
 
-  // Handle form submission.
-  const handleSubmit = () => {
-    // Combine the separate date and time inputs back into ISO format.
-    const updatedStartTime = combineDateTime(startDate, startTime);
-    const updatedEndTime = combineDateTime(endDate, endTime);
-
-    // Construct the updated event object.
-    const updatedEvent = {
-      ...initialData, // In edit mode, include other fields from initialData if needed.
-      title: eventName,
-      startTime: updatedStartTime,
-      endTime: updatedEndTime,
-      description,
-      price,
-      // Use the uploaded file if available, otherwise fallback to the existing image URL.
-      image: imageFile ? imageFile : image,
-      recurring: isRecurring,
-      game: selectedGameId,
-      isRecurring,
-    };
-
-    if (onSubmit) {
-      onSubmit(updatedEvent);
-    }
-    setIsModalOpen(false);
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
   };
+
+  // Handle form submission.
+ const handleSubmit = async () => {
+  // Combine the separate date and time inputs back into ISO format.
+  const updatedStartTime = combineDateTime(startDate, startTime);
+  const updatedEndTime = combineDateTime(endDate, endTime);
+
+  // Convert the image file to a base64 string if one is selected.
+  let imageData = image; // use the current image URL if no new file is selected
+  if (imageFile) {
+    try {
+      imageData = await fileToBase64(imageFile);
+    } catch (err) {
+      console.error("Error converting file to base64:", err);
+    }
+  }
+
+  // Construct the updated event object with the actual image data.
+  const updatedEvent = {
+    ...initialData, // include other fields from initialData if needed
+    title: eventName,
+    startTime: updatedStartTime,
+    endTime: updatedEndTime,
+    description,
+    price,
+    image: imageData, // this will be the base64 encoded image string
+    recurring: isRecurring,
+    game: selectedGameId,
+    isRecurring,
+  };
+
+  console.log(updatedEvent);
+  if (onSubmit) {
+    onSubmit(updatedEvent);
+  }
+  setIsModalOpen(false);
+};
 
   const handleDelete = () => {
     if (window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) {

@@ -14,11 +14,8 @@ from datetime import datetime
 import base64
 import os
 from dotenv import load_dotenv, dotenv_values
-import pickle
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from google.auth.transport.requests import Request
-
+from PIL import Image
+import io
 #Loads the env file
 load_dotenv()
 
@@ -30,7 +27,6 @@ load_dotenv()
 # Update the connection string with your actual MySQL credentials and database name
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("MYSQL_DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-WIX_API_KEY = os.getenv("WIX_API_KEY")
 SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE')
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 CALENDAR_ID = os.getenv('CALENDAR_ID')
@@ -38,7 +34,6 @@ credentials = service_account.Credentials.from_service_account_file(
     SERVICE_ACCOUNT_FILE, scopes=SCOPES
 )
 service = build('calendar', 'v3', credentials=credentials)
-
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
@@ -86,7 +81,7 @@ class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)
-    image = db.Column(db.String(255), nullable=True)
+    image = db.Column(db.LargeBinary, nullable=True)
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
     price = db.Column(db.String(50), nullable=True)
@@ -106,7 +101,6 @@ class Game(db.Model):
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
     description = db.Column(db.Text, nullable=False)
-    image = db.Column(db.String(255), nullable=True)
     players = db.Column(db.String(50), nullable=False)  # e.g., "2-4"
     participants = db.Column(db.Text, nullable=True)  # comma-separated list
     password = db.Column(db.String(255), nullable=True)
@@ -199,7 +193,10 @@ def get_events():
             "id": event.id,
             "title": event.title,
             "description": event.description,
-            "image": event.image,
+            "image": (
+                "data:image/jpeg;base64," + base64.b64encode(event.image).decode("utf-8")
+                if event.image else None
+            ),
             "startTime": event.start_time.isoformat(),
             "endTime": event.end_time.isoformat(),
             "price": event.price,
@@ -208,13 +205,25 @@ def get_events():
         })
     return jsonify(result)
 
+
 @app.route('/events', methods=['POST'])
 def create_event():
     data = request.get_json()
+    image_data = data.get("image")
+    image_bytes = None
+
+    if image_data:
+        try:
+            # Resize the image to reduce resolution
+            image_bytes = resize_image(image_data)
+        except Exception as e:
+            print(e)
+            return jsonify({"error": "Image processing failed: " + str(e)}), 500
+
     new_event = Event(
         title=data.get("title"),
         description=data.get("description"),
-        image=data.get("image"),
+        image=image_bytes,  # Store the resized image bytes
         start_time=datetime.fromisoformat(data.get("startTime")),
         end_time=datetime.fromisoformat(data.get("endTime")),
         price=data.get("price"),
@@ -224,7 +233,7 @@ def create_event():
     )
     db.session.add(new_event)
     db.session.commit()
-    
+
     announce_event(new_event)
     return jsonify({"message": "Event created", "id": new_event.id}), 201
 
@@ -235,16 +244,25 @@ def update_event(event_id):
     if not event:
         return jsonify({"error": "Event not found"}), 404
 
-    # Update fields if provided in the request
+    # Update text fields
     event.title = data.get("title", event.title)
     event.description = data.get("description", event.description)
-    event.image = data.get("image", event.image)
     event.start_time = datetime.fromisoformat(data.get("startTime")) if "startTime" in data else event.start_time
     event.end_time = datetime.fromisoformat(data.get("endTime")) if "endTime" in data else event.end_time
     event.price = data.get("price", event.price)
     event.game_id = data.get("game", event.game_id)
     event.participants = data.get("participants", event.participants)
     event.recurring = data.get("recurring", event.recurring)
+
+    # Handle image update
+    image_data = data.get("image")
+    if image_data:
+        try:
+            # Resize and convert the new image
+            event.image = resize_image(image_data)
+        except Exception as e:
+            print(e)
+            return jsonify({"error": "Image processing failed: " + str(e)}), 500
 
     db.session.commit()
     return jsonify({"message": "Event updated successfully", "id": event.id}), 200
@@ -294,7 +312,6 @@ def create_game():
         start_time=datetime.fromisoformat(data.get("startTime")),
         end_time=datetime.fromisoformat(data.get("endTime")),
         description=data.get("description"),
-        image=data.get("image"),
         players=data.get("players"),
         password=hashed_password,
         participants=data.get("participants"),
@@ -319,7 +336,6 @@ def create_game_with_room():
         "start_time":datetime.fromisoformat(data.get("startTime")),
         "end_time":datetime.fromisoformat(data.get("endTime")),
         'description': data.get("description"),
-        'image': data.get("image"),
         'players': data.get("players"),
         'participants': data.get("participants"),
         'email': data.get("email"),
@@ -362,7 +378,6 @@ def update_game(game_id):
     game.start_time = datetime.fromisoformat(data.get("startTime")) if "startTime" in data else game.start_time
     game.end_time = datetime.fromisoformat(data.get("endTime")) if "endTime" in data else game.end_time
     game.description = data.get("description", game.description)
-    game.image = data.get("image", game.image)
     game.players = data.get("players", game.players)
     game.password = hashed_password  # Store the updated hashed password if provided
     game.participants = data.get("participants", game.participants)
@@ -600,36 +615,29 @@ def create_calendar_event():
     except Exception as e:
         return jsonify({'error': f'Failed to create event: {str(e)}'}), 500
 
-
-def upload_image_to_wix(image_path):
-    # Read the image file in binary mode
-    with open(image_path, "rb") as f:
-        image_bytes = f.read()
-
-    # Convert image bytes to a base64 string
-    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-    payload = {
-        "fileData": image_base64
-    }
-
-    # Replace with your actual Wix HTTP function URL
-    wix_http_url = "https://www.boardandbevy.com/_functions/uploadImage"
-
-    # Set headers if necessary (e.g., if you want to use an authorization token)
-    headers = {
-        "Content-Type": "application/json"
-    }
-
-    # Send the POST request
-    response = requests.post(wix_http_url, headers=headers, json=payload)
-    response.raise_for_status()
-
-    # Extract the uploaded image URL from the JSON response
-    uploaded_url = response.json().get("url")
-    if not uploaded_url:
-        raise Exception("Upload failed: No URL returned from Wix HTTP function")
-    return uploaded_url
-
+def resize_image(image_data, max_width=800, max_height=600):
+    # Remove the data URL header if present.
+    if image_data.startswith("data:"):
+        _, image_data = image_data.split(",", 1)
+    
+    # Decode the base64 string to raw image bytes.
+    image_bytes = base64.b64decode(image_data)
+    
+    # Open the image using Pillow.
+    image = Image.open(io.BytesIO(image_bytes))
+    
+    # Resize the image while maintaining aspect ratio.
+    image.thumbnail((max_width, max_height))
+    
+    # Convert to RGB if the image is in RGBA or palette mode.
+    if image.mode in ("RGBA", "P"):
+        image = image.convert("RGB")
+    
+    # Save the image to a bytes buffer in JPEG format.
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG")
+    
+    return buffer.getvalue()
 
 if __name__ == '__main__':
     app.run(debug=True)
