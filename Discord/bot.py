@@ -13,6 +13,7 @@ import discord
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
+from cogs.messages import sendApprovalMessageToAdminChannel
 import asyncio
 import redis
 import json
@@ -172,9 +173,29 @@ def redis_subscriber():
     r = redis.Redis(host='localhost', port=6379, db=0)
     pubsub = r.pubsub()
     # Subscribe to both event and game channels
-    pubsub.subscribe('new_event', 'new_game')
+    pubsub.subscribe('new_event', 'new_game', 'new_game_with_room')
     return pubsub
 
+
+async def handle_new_game_with_room(bot, message):
+        print(message)
+        payload = json.loads(message['data'].decode('utf-8'))
+
+        # Now call the function with the correct parameters from the payload
+        await sendApprovalMessageToAdminChannel(
+            bot,
+            payload["email"],
+            None,
+            payload["organizer"],
+            payload["title"],         # Use "title" instead of "game_name"
+            payload["description"],
+            payload["players"],
+            payload["start_time"],
+            payload["end_time"],
+            payload["halfPrivateRoom"],
+            payload["firstLastName"],
+            payload["privateRoomRequest"]
+        )
 async def handle_new_event(bot, message):
     """
     Processes a Redis message from the 'new_event' channel, formats the event data
@@ -268,6 +289,8 @@ async def handle_new_game(bot, message):
         embed.add_field(name="Catalogue", value=data.get('catalogue'), inline=False)
     
     gamePosting = await channel.send(embed=embed)
+    
+
 
 
     print(f'gamePosting type: {type(gamePosting)}')
@@ -308,6 +331,8 @@ async def redis_listener(bot):
                 channel_name = channel_name.decode('utf-8')
             if channel_name == 'new_event':
                 await handle_new_event(bot, message)
+            elif channel_name == 'new_game_with_room':
+                await handle_new_game_with_room(bot, message)
             elif channel_name == 'new_game':
                 await handle_new_game(bot, message)
         await asyncio.sleep(5)  # Increase sleep if precision is not critical

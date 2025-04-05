@@ -43,27 +43,46 @@ export default function RSVPModal({ isOpen, onClose, eventData, type, refresh}) 
 
   // Construct a Google Calendar URL using event details with the fixed location.
   const handleAddToGoogleCalendar = () => {
+    const formatForGoogleCalendar = (timeStr) => {
+      const date = new Date(timeStr);
+      const pad = (num) => (num < 10 ? "0" + num : num);
+      return (
+        date.getUTCFullYear().toString() +
+        pad(date.getUTCMonth() + 1) +
+        pad(date.getUTCDate()) +
+        "T" +
+        pad(date.getUTCHours()) +
+        pad(date.getUTCMinutes()) +
+        pad(date.getUTCSeconds()) +
+        "Z"
+      );
+    };
+    const start = formatForGoogleCalendar(eventData.startTime);
+    const end = formatForGoogleCalendar(eventData.endTime);
+  
     const text = encodeURIComponent(eventData.title);
     const details = encodeURIComponent(eventData.description || "");
     const location = encodeURIComponent(LOCATION);
-    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${eventData.startTime}/${eventData.endTime}&details=${details}&location=${location}`;
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}&location=${location}`;
+    
     window.open(url, "_blank");
   };
+  
 
   // Generate and download an ICS file for Apple Calendar using the fixed location.
   const handleDownloadICS = () => {
     const icsContent = `
-BEGIN:VCALENDAR
-VERSION:2.0
-BEGIN:VEVENT
-SUMMARY:${eventData.title}
-DESCRIPTION:${eventData.description}
-LOCATION:${LOCATION}
-DTSTART:${eventData.startTime}
-DTEND:${eventData.endTime}
-END:VEVENT
-END:VCALENDAR
-    `.trim();
+      BEGIN:VCALENDAR
+      VERSION:2.0
+      BEGIN:VEVENT
+      SUMMARY:${eventData.title}
+      DESCRIPTION:${eventData.description}
+      LOCATION:${LOCATION}
+      DTSTART:${eventData.startTime}
+      DTEND:${eventData.endTime}
+      END:VEVENT
+      END:VCALENDAR
+          `.trim();
 
     const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);

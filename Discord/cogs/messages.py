@@ -237,7 +237,7 @@ class Messages(commands.Cog):
         print(game_name)
         if game_name == None:
             def gameNameCollectionCheck(message):
-             return message.author == usersObject and message.channel == thread
+                return message.author == usersObject and message.channel == thread
 
             #Prompt for the name
             await thread.send("Please send the name of your game")
@@ -605,7 +605,8 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
     denyMessageReason = None
 
     #Grab the user
-    usersObject = await bot.fetch_user(usersDiscordID)
+    if email == None:
+        usersObject = await bot.fetch_user(usersDiscordID)
 
     #Send the message
     gameApprovalMessage = await gameApprovalChanel.send(approvalMessage)
@@ -758,7 +759,8 @@ async def deny_request(bot, gameApprovalMessage, usersDiscordID, email):
                 denyMessageReason = await bot.wait_for('message', timeout=60, check=denyMessageResponseCheck)
                 print(f'Deny message reason in try: {denyMessageReason}')
             except TimeoutError:
-                #thread.send("Timeout reached, sending rejection with no reason")
+                #  print("hello world")
+                #  thread.send("Timeout reached, sending rejection with no reason")
                 print()
             except Exception as e:
                 print(f'DENIAL MESSAGE ERROR: {e}')       
@@ -769,13 +771,13 @@ async def deny_request(bot, gameApprovalMessage, usersDiscordID, email):
 
         denialMessage = "Your request has been **denied**"
 
-        if denyMessageReason != None:
+        if denyMessageReason != None: 
             #There is a deny message, then append it to the string
             denialMessage += f', please find the reason below \n{denyMessageReason.content}'
                 
         #Run a check here to sed if an email message or a discord DM is sent to
         #the user to notify them of their denied game
-        
+        print(email)
             if email == None:
                 #The DM command is here
                 await DMDiscordServerMember(bot, usersDiscordID, denialMessage)
@@ -786,6 +788,9 @@ async def deny_request(bot, gameApprovalMessage, usersDiscordID, email):
                 
     except Exception as e:
         print(f'ERROR: {e}')
+
+    
+
 
 
 #Adds the cog to the bot
