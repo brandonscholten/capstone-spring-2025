@@ -14,6 +14,10 @@ from datetime import datetime
 import base64
 import os
 from dotenv import load_dotenv, dotenv_values
+import pickle
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from google.auth.transport.requests import Request
 
 #Loads the env file
 load_dotenv()
@@ -27,13 +31,13 @@ load_dotenv()
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("MYSQL_DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 WIX_API_KEY = os.getenv("WIX_API_KEY")
-# SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE')
-# SCOPES = ['https://www.googleapis.com/auth/calendar']
-# CALENDAR_ID = os.getenv('CALENDAR_ID')
-# credentials = service_account.Credentials.from_service_account_file(
-#     SERVICE_ACCOUNT_FILE, scopes=SCOPES
-# )
-# service = build('calendar', 'v3', credentials=credentials)
+SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE')
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+CALENDAR_ID = os.getenv('CALENDAR_ID')
+credentials = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES
+)
+service = build('calendar', 'v3', credentials=credentials)
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -538,63 +542,64 @@ def announce_game_with_room(game):
     # Publish the message to the "new_game" channel
     r.publish('new_game_with_room', message)
 
-# def check_event_conflict(start_iso, end_iso):
-#     """
-#     Check for existing events in the calendar that fall within the given time range.
-#     Both start_iso and end_iso should be in ISO format with timezone info.
-#     """
-#     events_result = service.events().list(
-#         calendarId=CALENDAR_ID,
-#         timeMin=start_iso,
-#         timeMax=end_iso,
-#         singleEvents=True,
-#         orderBy='startTime'
-#     ).execute()
-#     events = events_result.get('items', [])
-#     return len(events) > 0
+def check_event_conflict(start_iso, end_iso):
+    """
+    Check for existing events in the calendar that fall within the given time range.
+    Both start_iso and end_iso should be in ISO format with timezone info.
+    """
+    events_result = service.events().list(
+        calendarId=CALENDAR_ID,
+        timeMin=start_iso,
+        timeMax=end_iso,
+        singleEvents=True,
+        orderBy='startTime'
+    ).execute()
+    events = events_result.get('items', [])
+    return len(events) > 0
 
-# @app.route('/create-event', methods=['POST'])
-# def create_calendar_event():
-#     data = request.get_json()
-#     title = data.get('title')
-#     description = data.get('description', '')
-#     start_time = data.get('startTime')  # e.g., "2025-03-20T16:00:00Z"
-#     end_time = data.get('endTime')      # e.g., "2025-03-20T20:00:00Z"
+@app.route('/create-event', methods=['POST'])
+def create_calendar_event():
+    data = request.get_json()
+    title = data.get('title')
+    description = data.get('description', '')
+    start_time = data.get('startTime')  # e.g., "2025-03-20T16:00:00Z"
+    end_time = data.get('endTime')      # e.g., "2025-03-20T20:00:00Z"
 
-#     if not (title and start_time and end_time):
-#         return jsonify({'error': 'Missing required fields: title, startTime, and endTime.'}), 400
+    if not (title and start_time and end_time):
+        return jsonify({'error': 'Missing required fields: title, startTime, and endTime.'}), 400
 
-#     # Check for overlapping events. If any event is found, return an error.
-#     if check_event_conflict(start_time, end_time):
-#         return jsonify({
-#             'error': 'Time slot conflict: There is already an event scheduled during this time.'
-#         }), 409
+    # Check for overlapping events. If any event is found, return an error.
+    if check_event_conflict(start_time, end_time):
+        return jsonify({
+            'error': 'Time slot conflict: There is already an event scheduled during this time.'
+        }), 409
 
-#     # Build the event payload for Google Calendar.
-#     event_body = {
-#         'summary': title,
-#         'description': description,
-#         'start': {
-#             'dateTime': start_time,
-#             'timeZone': 'UTC'  # Adjust if necessary.
-#         },
-#         'end': {
-#             'dateTime': end_time,
-#             'timeZone': 'UTC'  # Adjust if necessary.
-#         }
-#     }
+    # Build the event payload for Google Calendar.
+    event_body = {
+        'summary': title,
+        'description': description,
+        'start': {
+            'dateTime': start_time,
+            'timeZone': 'UTC'  # Adjust if necessary.
+        },
+        'end': {
+            'dateTime': end_time,
+            'timeZone': 'UTC'  # Adjust if necessary.
+        }
+    }
 
-#     try:
-#         created_event = service.events().insert(
-#             calendarId=CALENDAR_ID,
-#             body=event_body
-#         ).execute()
-#         return jsonify({
-#             'message': 'Event created successfully',
-#             'event': created_event
-#         }), 201
-#     except Exception as e:
-#         return jsonify({'error': f'Failed to create event: {str(e)}'}), 500
+    try:
+        created_event = service.events().insert(
+            calendarId=CALENDAR_ID,
+            body=event_body
+        ).execute()
+        return jsonify({
+            'message': 'Event created successfully',
+            'event': created_event
+        }), 201
+    except Exception as e:
+        return jsonify({'error': f'Failed to create event: {str(e)}'}), 500
+
 
 def upload_image_to_wix(image_path):
     # Read the image file in binary mode
