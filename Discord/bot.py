@@ -16,6 +16,8 @@ from dotenv import load_dotenv
 import asyncio
 import redis
 import json
+from datetime import datetime
+import pytz
 
 async def load_cogs(bot):
     cog_list = [
@@ -53,8 +55,9 @@ async def run_bot():
 
         #Grabs the channel ID from the env file to ensure proper channel for reaction handling
         GAMES_CHANNEL_ID = int(os.getenv("GAMES_CHANNEL_ID"))
+        EVENTS_CHANNEL_ID = int(os.getenv("EVENTS_CHANNEL_ID"))
 
-        if channel.id != GAMES_CHANNEL_ID :
+        if channel.id not in {GAMES_CHANNEL_ID, EVENTS_CHANNEL_ID} :
             #Reaction was not in the games channel, so dont do anything
             return
         
@@ -77,7 +80,7 @@ async def run_bot():
 
             #Check for any other reaction and remove it (👎)
             
-
+##################################################################################################
             
             #Make the JSON
 
@@ -85,7 +88,57 @@ async def run_bot():
 
             #
             # Schedule the reminder!
+
             #
+            #Grab the event time from message
+            #
+
+            #Grab the embedded message
+            embeddedMessage = message.embeds[0]
+
+            #Make a default value for the startTime
+            startTime = None
+
+            #Go through the fields and find the correct field of start time
+            for field in embeddedMessage.fields:
+              if field.name == "Start Time":
+                  startTime = field.value
+                  break
+
+            
+            
+            # Convert the start time from 12hr EST to 24hr UTC
+            startTime = est12hrTo24hrUTC(startTime)
+
+
+            # Convert the startTime into a datetime object
+            startTime = datetime.fromisoformat(startTime)
+
+            # ^^ WORKING CODE ABOVE THIS LINE ^^
+
+            # Grab the seconds from startTime
+            startTime = startTime.total_seconds()
+
+            print(f"Start time seconds: {startTime}")
+
+            # Grab the current time to help get the seconds until the start of the 
+            # currentTime = datetime.now(pytz.timezone("US/Eastern")).total_seconds()
+
+
+            # reminder_time = startTime - timedelta(hours=1)
+            # delay = (reminder_time - currentTime)
+            #
+            # if delay > 0:
+            #    async def send_dm_reminder():
+            #       await asyncio.sleep(delay)
+            #       print(f'{message.content}')
+            #       await user.send("Your game is starting soon!", embed=message.embeds[0])
+            #
+            # task = bot.loop.create_task(send_dm_reminder())  # ✅ This is the scheduling
+            # scheduled_reminders[(user.id, message.id)] = task  # Store task to cancel later
+
+####################################################################################################
+
         elif str(reaction.emoji) == '👎':
             print("Not RSVping, or removing RSVP for the event")
 
@@ -135,7 +188,7 @@ async def handle_new_event(bot, message):
         return
 
     # Replace with your actual Events channel ID
-    EVENTS_CHANNEL_ID = 1352001770393571430
+    EVENTS_CHANNEL_ID = int(os.getenv("EVENTS_CHANNEL_ID"))
     channel = bot.get_channel(EVENTS_CHANNEL_ID)
 
 
@@ -148,8 +201,14 @@ async def handle_new_event(bot, message):
         description=data.get('description', ''),
         color=discord.Color.blue()
     )
-    embed.add_field(name="Start Time", value=data.get('start_time', 'Unknown'), inline=False)
-    embed.add_field(name="End Time", value=data.get('end_time', 'Unknown'), inline=False)
+
+    #Format the times as EST 12hr for readability
+    formattedStartTime = utcTo12hrEST(data.get('start_time', 'Unknown'))
+    formattedEndTime = utcTo12hrEST(data.get('end_time', 'Unknown'))
+
+
+    embed.add_field(name="Start Time", value=formattedStartTime, inline=False)
+    embed.add_field(name="End Time", value=formattedEndTime, inline=False)
     embed.add_field(name="Price", value=data.get('price', 'Free'), inline=False)
     
     if data.get('game'):
@@ -192,9 +251,15 @@ async def handle_new_game(bot, message):
         description=data.get('description', ''),
         color=discord.Color.green()
     )
+
+    #Format the times as EST 12hr for readability
+    formattedStartTime = utcTo12hrEST(data.get('start_time', 'Unknown'))
+    formattedEndTime = utcTo12hrEST(data.get('end_time', 'Unknown'))
+
+
     embed.add_field(name="Organizer", value=data.get('organizer', 'Unknown'), inline=False)
-    embed.add_field(name="Start Time", value=data.get('start_time', 'Unknown'), inline=False)
-    embed.add_field(name="End Time", value=data.get('end_time', 'Unknown'), inline=False)
+    embed.add_field(name="Start Time", value=formattedStartTime, inline=False)
+    embed.add_field(name="End Time", value=formattedEndTime, inline=False)
     embed.add_field(name="Players", value=data.get('players', 'N/A'), inline=False)
     
     if data.get('participants'):
@@ -246,6 +311,41 @@ async def redis_listener(bot):
             elif channel_name == 'new_game':
                 await handle_new_game(bot, message)
         await asyncio.sleep(5)  # Increase sleep if precision is not critical
+
+#Returns in format mm-dd-yyy hh:mm am/pm
+def utcTo12hrEST(utcString):
+    print("Converting utc to 12 hr EST")
+    #Date conversions from UTC to EST
+
+    # #1. Make the datetime object from the game date
+    utcDateTimeObject = datetime.fromisoformat(utcString)
+
+    # #Convert to EST
+    estDateTimeObject = utcDateTimeObject.astimezone(pytz.timezone("US/Eastern"))
+
+    # #Format the date and time to 12 hr
+    estDateTimeObject = estDateTimeObject.strftime("%m-%d-%Y %I:%M %p")
+
+    return estDateTimeObject
+
+
+def est12hrTo24hrUTC(estString):
+    print("Converting the est 12hr time to 24hr UTC")
+
+    #1.) Make the string into a datetime object
+    estTimeObject = datetime.strptime(estString, "%m-%d-%Y %I:%M %p")
+
+    #2.) Set the objects timezone as EST to ensure proper converting
+    estTimeObject = (pytz.timezone("US/Eastern")).localize(estTimeObject)
+
+    #3.) Now convert it to UTC
+    utcTimeObject = estTimeObject.astimezone(pytz.utc)
+
+    print(f"utcTimeObject: {utcTimeObject}")
+
+    #4.) Return the string of the UTC format
+    return utcTimeObject.isoformat()
+    
 
 def main():
     bot = asyncio.run(run_bot())

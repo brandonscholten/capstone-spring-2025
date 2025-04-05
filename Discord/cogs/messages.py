@@ -625,7 +625,38 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
             print("Thumbs up!!!")
 
             gameApproved = True
-            
+            calendar = {
+                "title": f"{usersName}'s Event ({"Full Room" if not halfPrivateRoom else "Half Room"})",
+                "description": game_description,
+                "start_time": game_date,
+                "end_time": game_end_time, # e.g., "2025-03-20T16:00:00Z"
+                "force": False
+            }
+            #Then send this off with requests
+            calendar_response = requests.post('http://127.0.0.1:5000/create-game', json=calendar)
+            if calendar_response.status_code == 409:
+                calendarErrorMessage = await gameApprovalChanel.send("The Back Room is full at this time, Take a look at the [calendar](https://calendar.google.com/calendar/u/0?cid=Ym9hcmRuYmV2eUBnbWFpbC5jb20) to double check if you'd like to add it anyways Approve this message")
+                
+                def calendarOverrideCheck(reaction, channel):
+                    return reaction.message.id == gameApprovalMessage.id
+
+                #Add the reactions
+                await calendarErrorMessage.add_reaction("👍")
+                await calendarErrorMessage.add_reaction("👎")
+                
+                try:
+                    reaction, user = bot.wait_for("reaction_add", check=calendarOverrideCheck)
+
+                    if str(reaction.emoji) == "👍":
+                        calendar['force'] = True
+                        requests.post('http://127.0.0.1:5000/create-game', json=calendar)
+                        r = requests.post("http://127.0.0.1:5000/games", json=gameDict)
+                    elif str(reaction.emoji) == "👎":
+                        de
+                        #Reject This Game
+                        print("Rejected the override")    
+                except Exception as e:
+                    print(f"ERROR at calendar override reaction: {e}")
         
             approvalDM = "Please ensure you pay for your private room reservation prior to your event start time using the links below! \n"
         
@@ -655,62 +686,15 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
                 #email code goes here
 
         elif str(reaction.emoji) == '👎':
-
-             optionalDenyMessagePrompt = await gameApprovalMessage.reply("Would you like to send a reason for denying the event?")
-
-             #Add the reactions
-             await optionalDenyMessagePrompt.add_reaction("👍")
-             await optionalDenyMessagePrompt.add_reaction("👎")
-
-             try:
-              denyMessageReasonReaction, user = await self.bot.wait_for("reaction_add")
-
-              print(denyMessageReasonReaction.emoji)
-
-              if str(denyMessageReasonReaction.emoji) == '👍':
-               #Collect the reason
-               await optionalDenyMessagePrompt.reply("Please send your reason")
-
-               try:
-                 def denyMessageResponseCheck(message):
-                  return message.author == user and message.channel == gameApprovalMessage.channel
-                                    
-                 denyMessageReason = await bot.wait_for('message', timeout=60, check=denyMessageResponseCheck)
-                 print(f'Deny message reason in try: {denyMessageReason}')
-               except TimeoutError:
-                 #thread.send("Timeout reached, sending rejection with no reason")
-                 print()
-             except Exception as e:
-               print(f'DENIAL MESSAGE ERROR: {e}')       
-                    
-               print(denyMessageReason)
-
-        #Now print a follow-up message, asking for an optional reason
-
-        denialMessage = "Your request has been **denied**"
-
-        if denyMessageReason != None:
-            #There is a deny message, then append it to the string
-            denialMessage += f', please find the reason below \n{denyMessageReason.content}'
-                    
-            #Run a check here to sed if an email message or a discord DM is sent to
-            #the user to notify them of their denied game
-            
-            if email == None:
-                #The DM command is here
-                await DMDiscordServerMember(bot, usersDiscordID, denialMessage)
-            elif email != None:
-                print("Email the user their DENIAL")
-
-                #Put code to email user!!
-                    
+            deny_request(bot, gameApprovalMessage, usersDiscordID, email)
     except Exception as e:
-        print(f'ERROR: {e}')
-
+        print(f"Exception: {e}")
+    
 
     print(f"game_date type: {type(game_date)}")
 
     if gameApproved: 
+        
         #
         #   Send API endpoint request
         #
@@ -729,7 +713,7 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
             "catalogue_id": None
         }
 
-        #Add the password 
+        #Add the password, if present 
         if password != None:
             updatedGameDict = {
                 "title": game_name,
@@ -744,15 +728,64 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
                 "catalogue_id": None
             }
             
-
             gameDict.update(updatedGameDict)
-        
-        #Then send this off with requests
-        r = requests.post("http://127.0.0.1:5000/games", json=gameDict)
+        else:
+            r = requests.post("http://127.0.0.1:5000/games", json=gameDict)
 
         
 
+async def deny_request(bot, gameApprovalMessage, usersDiscordID, email):
+    
+    optionalDenyMessagePrompt = await gameApprovalMessage.reply("Would you like to send a reason for denying the event?")
 
+    #Add the reactions
+    await optionalDenyMessagePrompt.add_reaction("👍")
+    await optionalDenyMessagePrompt.add_reaction("👎")
+
+    try:
+        denyMessageReasonReaction, user = await bot.wait_for("reaction_add")
+
+        print(denyMessageReasonReaction.emoji)
+
+        if str(denyMessageReasonReaction.emoji) == '👍':
+        #Collect the reason
+            await optionalDenyMessagePrompt.reply("Please send your reason")
+
+            try:
+                def denyMessageResponseCheck(message):
+                    return message.author == user and message.channel == gameApprovalMessage.channel
+                                
+                denyMessageReason = await bot.wait_for('message', timeout=60, check=denyMessageResponseCheck)
+                print(f'Deny message reason in try: {denyMessageReason}')
+            except TimeoutError:
+                #thread.send("Timeout reached, sending rejection with no reason")
+                print()
+            except Exception as e:
+                print(f'DENIAL MESSAGE ERROR: {e}')       
+                
+            print(denyMessageReason)
+
+    #Now print a follow-up message, asking for an optional reason
+
+        denialMessage = "Your request has been **denied**"
+
+        if denyMessageReason != None:
+            #There is a deny message, then append it to the string
+            denialMessage += f', please find the reason below \n{denyMessageReason.content}'
+                
+        #Run a check here to sed if an email message or a discord DM is sent to
+        #the user to notify them of their denied game
+        
+            if email == None:
+                #The DM command is here
+                await DMDiscordServerMember(bot, usersDiscordID, denialMessage)
+            elif email != None:
+                print("Email the user their DENIAL")
+
+            #Put code to email user!!
+                
+    except Exception as e:
+        print(f'ERROR: {e}')
 
 
 #Adds the cog to the bot
