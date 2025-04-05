@@ -653,7 +653,7 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
                         requests.post('http://127.0.0.1:5000/create-game', json=calendar)
                         r = requests.post("http://127.0.0.1:5000/games", json=gameDict)
                     elif str(reaction.emoji) == "👎":
-                        de
+                        deny_request(bot, gameApprovalMessage, usersDiscordID, email)
                         #Reject This Game
                         print("Rejected the override")    
                 except Exception as e:
@@ -778,11 +778,11 @@ async def deny_request(bot, gameApprovalMessage, usersDiscordID, email):
         #Run a check here to sed if an email message or a discord DM is sent to
         #the user to notify them of their denied game
         print(email)
-            if email == None:
-                #The DM command is here
-                await DMDiscordServerMember(bot, usersDiscordID, denialMessage)
-            elif email != None:
-                print("Email the user their DENIAL")
+        if email == None:
+            #The DM command is here
+            await DMDiscordServerMember(bot, usersDiscordID, denialMessage)
+        elif email != None:
+            print("Email the user their DENIAL")
 
             #Put code to email user!!
                 
