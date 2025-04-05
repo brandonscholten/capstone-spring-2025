@@ -32,8 +32,72 @@ async def run_bot():
     intents = discord.Intents.default()
     intents.message_content = True
     intents.members = True
+    intents.reactions = True
 
     bot = commands.Bot(command_prefix="/", intents=intents)
+
+    #Add the RSVP reaction event
+    #Making this a bot.event ensures this can fire EVERY time a reaction is added 
+    @bot.event
+    async def on_reaction_add(reaction, user):
+        print("Handling reaction adds!!!!!!")
+
+        if user.bot:
+            #Don't handle the reactions from the bot, only users
+            return
+
+        #Grabs the game/event message and chanel the RSVP is done in
+        #Ensures this only fires for the specific channels and messages
+        message = reaction.message
+        channel = message.channel
+
+        #Grabs the channel ID from the env file to ensure proper channel for reaction handling
+        GAMES_CHANNEL_ID = int(os.getenv("GAMES_CHANNEL_ID"))
+
+        if channel.id != GAMES_CHANNEL_ID :
+            #Reaction was not in the games channel, so dont do anything
+            return
+        
+        #Now iterate through the reactions and remove only the
+        #user that changed their RVSP status (reaction)
+        for reactions in message.reactions:
+            #Check if the new reaction (parameter) is not equal=
+            #to the reaction found, remove it
+            if reactions.emoji != reaction.emoji:
+                #Remove it
+                users = [u async for u in reactions.users()]
+                if user in users:
+                    await reactions.remove(user)
+
+        #
+        #   Handle reaction addition
+        #
+        if str(reaction.emoji) == '👍':
+            print("RSVPing for the event")
+
+            #Check for any other reaction and remove it (👎)
+            
+
+            
+            #Make the JSON
+
+            #Make the API call to add to the RSVP
+
+            #
+            # Schedule the reminder!
+            #
+        elif str(reaction.emoji) == '👎':
+            print("Not RSVping, or removing RSVP for the event")
+
+            #Check if a previous 👍 was put in, if so switch it to a 👎
+
+            #Unschedule the reminder
+
+
+            #Make the JSON
+
+            #Make the API call to remove the RSVP
+
 
     # When the bot is ready, sync commands and start the Redis listener
     @bot.event
@@ -99,8 +163,11 @@ async def handle_new_event(bot, message):
     print(f'gamePosting: {gamePosting}')
 
     #Now add the interactions to the message
-    await gamePosting.add_interaction("👍")
-    await gamePosting.add_interaction("👎")
+    await gamePosting.add_reaction("👍")
+    await gamePosting.add_reaction("👎")
+
+
+
 
 async def handle_new_game(bot, message):
     """
@@ -145,44 +212,17 @@ async def handle_new_game(bot, message):
     await gamePosting.add_reaction("👍")
     await gamePosting.add_reaction("👎")
 
-    #Make the check
+    #Make the check to ensure only RSVP happens for users and not the bot
+    #adding the initial reactions
     def gameRSVPCheck(reaction, user):
         return (
             reaction.message.id == gamePosting.id
             and user != bot.user
             and str(reaction.emoji) in ["👍", "👎"]
         )
+    
 
-
-    try:
-        reaction, user = await bot.wait_for("reaction_add", check=gameRSVPCheck)
-
-        if str(reaction.emoji) == '👍':
-            print("RSVPing for the event")
-
-            #Check if a previous 👎 was put in, if so switch it to a 👍
-            
-            #Make the JSON
-
-            #Make the API call to add to the RSVP
-
-            #
-            # Schedule the reminder!
-            #
-
-
-        elif str(reaction.emoji) == '👎':
-            print("Not RSVping, or removing RSVP for the event")
-
-            #Check if a previous 👍 was put in, if so switch it to a 👎
-            #Unschedule the reminder
-
-
-            #Make the JSON
-
-            #Make the API call to remove the RSVP
-    except e:
-        print(f"RSVP Error: {e}")
+    
 
 
 
