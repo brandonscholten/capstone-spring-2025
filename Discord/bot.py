@@ -17,7 +17,7 @@ from cogs.messages import sendApprovalMessageToAdminChannel
 import asyncio
 import redis
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 async def load_cogs(bot):
@@ -113,29 +113,35 @@ async def run_bot():
 
             # Convert the startTime into a datetime object
             startTime = datetime.fromisoformat(startTime)
+            print(f"startTime: {startTime}")
 
-            # ^^ WORKING CODE ABOVE THIS LINE ^^
-
-            # Grab the seconds from startTime
-            startTime = startTime.total_seconds()
-
-            print(f"Start time seconds: {startTime}")
+            
 
             # Grab the current time to help get the seconds until the start of the 
-            # currentTime = datetime.now(pytz.timezone("US/Eastern")).total_seconds()
+            currentTime = (datetime.now(pytz.timezone("US/Eastern"))).astimezone(pytz.utc)
 
 
-            # reminder_time = startTime - timedelta(hours=1)
-            # delay = (reminder_time - currentTime)
-            #
-            # if delay > 0:
-            #    async def send_dm_reminder():
-            #       await asyncio.sleep(delay)
-            #       print(f'{message.content}')
-            #       await user.send("Your game is starting soon!", embed=message.embeds[0])
-            #
-            # task = bot.loop.create_task(send_dm_reminder())  # ✅ This is the scheduling
-            # scheduled_reminders[(user.id, message.id)] = task  # Store task to cancel later
+           
+
+            reminder_time = startTime - timedelta(hours=1)
+            delay = (reminder_time - currentTime).total_seconds()
+            print(f"delay: {delay}")
+
+            
+            async def send_dm_reminder():
+                  await asyncio.sleep(delay)
+                  print(f'message content: {message.content}')
+                  await user.send("Your game is starting soon!", embed=message.embeds[0])
+
+            if delay > 0:
+                task = bot.loop.create_task(send_dm_reminder())  # ✅ This is the scheduling
+                # scheduled_reminders[(user.id, message.id)] = task  # Store task to cancel later
+            elif delay < 0:
+                #Send an immediate reminder
+                await user.send(f"Your game starts in under an hour", embed=message.embeds[0])
+
+            # ^^ CODE ABOVE THIS POINT WORKING ^^
+
 
 ####################################################################################################
 
@@ -309,6 +315,26 @@ async def handle_new_game(bot, message):
             and str(reaction.emoji) in ["👍", "👎"]
         )
     
+
+    # Need to calculate the number of seconds between the schedule date
+    # and the end date and time for deletion
+
+    #Grab the current time and localize it for EST and bring it to UTC
+    #The 4 or 5 hour offset is already baked into the hours of UTC
+    # Grab the current time to help get the seconds until the start of the 
+    currentTime = (datetime.now(pytz.timezone("US/Eastern"))).astimezone(pytz.utc)
+
+    #Grab end time of the game from EST 12 hour to UTC 24 hour
+    endTime = est12hrTo24hrUTC(formattedEndTime)
+
+    #Convert the end time into a datetime object
+    endTime = datetime.isoformat(endTime)
+
+
+    #Subtract the two to get the delta seconds left
+    deleteTimeDifference = currentTime - endTime
+
+    print(f"deleteTimeDifference: {deleteTimeDifference}")
 
     
 
