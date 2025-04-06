@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api from "../api/axiosClient";
+
 // Helper function to parse a date string in "YYYYMMDDTHHmmssZ" format.
 function parseEventDate(dateStr) {
   const formatted = dateStr.replace(
@@ -12,7 +13,6 @@ function parseEventDate(dateStr) {
 // Helper to combine a date (YYYY-MM-DD) and time (HH:MM) into "YYYYMMDDTHHmmssZ" format.
 // Seconds are defaulted to "00".
 function combineDateTime(date, time) {
-  // Remove dashes and colon, then append "00" for seconds.
   const datePart = date.replace(/-/g, ""); // e.g., "20250303"
   const timePart = time.replace(":", "") + "00"; // e.g., "190000"
   return `${datePart}T${timePart}Z`;
@@ -41,7 +41,10 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
   const [endTime, setEndTime] = useState(initialEndTime);
   const [description, setDescription] = useState(initialData?.description || "");
   const [price, setPrice] = useState(initialData?.price || "");
+  // Keep the current image URL (if any) for preview.
   const [image, setImage] = useState(initialData?.image || "");
+  // New state for storing an uploaded image file.
+  const [imageFile, setImageFile] = useState(null);
   
   // Flag to track if end date has been manually modified.
   const [hasEndDateBeenModified, setHasEndDateBeenModified] = useState(!!initialData?.endTime);
@@ -62,7 +65,6 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
       .catch((error) => console.error("Error fetching catalogue:", error));
   }, []);
   
-
   // Update game suggestions whenever gameQuery or catalogueItems change.
   useEffect(() => {
     if (gameQuery.trim() === "") {
@@ -105,31 +107,60 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
     setHasEndDateBeenModified(true);
   };
 
-  // Handle form submission.
-  const handleSubmit = () => {
-    // Combine the separate date and time inputs back into ISO format.
-    const updatedStartTime = combineDateTime(startDate, startTime);
-    const updatedEndTime = combineDateTime(endDate, endTime);
-
-    // Construct the updated event object.
-    const updatedEvent = {
-      ...initialData, // In edit mode, include other fields from initialData if needed.
-      title: eventName,
-      startTime: updatedStartTime,
-      endTime: updatedEndTime,
-      description,
-      price,
-      image,
-      recurring: isRecurring,
-      game: selectedGameId, // store the selected catalogue id for the game.
-      isRecurring, // recurring event flag.
-    };
-
-    if (onSubmit) {
-      onSubmit(updatedEvent);
+  // Handle file selection for image upload.
+  const handleImageUpload = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+      // Optionally clear the existing image URL if a new file is selected.
+      setImage("");
     }
-    setIsModalOpen(false);
   };
+
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  // Handle form submission.
+ const handleSubmit = async () => {
+  // Combine the separate date and time inputs back into ISO format.
+  const updatedStartTime = combineDateTime(startDate, startTime);
+  const updatedEndTime = combineDateTime(endDate, endTime);
+
+  // Convert the image file to a base64 string if one is selected.
+  let imageData = image; // use the current image URL if no new file is selected
+  if (imageFile) {
+    try {
+      imageData = await fileToBase64(imageFile);
+    } catch (err) {
+      console.error("Error converting file to base64:", err);
+    }
+  }
+
+  // Construct the updated event object with the actual image data.
+  const updatedEvent = {
+    ...initialData, // include other fields from initialData if needed
+    title: eventName,
+    startTime: updatedStartTime,
+    endTime: updatedEndTime,
+    description,
+    price,
+    image: imageData, // this will be the base64 encoded image string
+    recurring: isRecurring,
+    game: selectedGameId,
+    isRecurring,
+  };
+
+  console.log(updatedEvent);
+  if (onSubmit) {
+    onSubmit(updatedEvent);
+  }
+  setIsModalOpen(false);
+};
 
   const handleDelete = () => {
     if (window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
@@ -254,14 +285,26 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
                 onChange={(e) => setDescription(e.target.value)}
               ></textarea>
 
-              <label className="block mt-2 mb-1 font-semibold">Event Image URL</label>
+              {/* File Upload Field */}
+              <label className="block mt-2 mb-1 font-semibold">Upload Event Image</label>
               <input 
-                type="text" 
-                className="w-full border p-2 rounded" 
-                placeholder="Enter image URL"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
+                type="file" 
+                accept="image/*" 
+                className="w-full border p-2 rounded"
+                onChange={handleImageUpload}
               />
+
+              {/* Display image preview if available */}
+              {(imageFile || image) && (
+                <div className="mt-2">
+                  <p className="font-semibold">Image Preview:</p>
+                  <img 
+                    src={imageFile ? URL.createObjectURL(imageFile) : image} 
+                    alt="Event" 
+                    className="max-w-full h-auto" 
+                  />
+                </div>
+              )}
 
               <label className="block mt-2 mb-1 font-semibold">Recurring Event</label>
               <div className="flex items-center">
