@@ -329,7 +329,7 @@ def create_game_with_room():
     data = request.get_json()
     
     hashed_password = bcrypt.hashpw(data.get("password").encode('utf-8'), bcrypt.gensalt()).decode('utf-8') if data.get("password") else None
-    
+    print(data.get("halfPrivateRoom"))
     new_game = {
         'title': data.get("title"),
         'organizer': data.get("organizer"),
@@ -339,7 +339,7 @@ def create_game_with_room():
         'players': data.get("players"),
         'participants': data.get("participants"),
         'email': data.get("email"),
-        'halfPrivateRoom': data.get("halfPrivateRoom"),
+        'halfPrivateRoom': True if data.get("halfPrivateRoom") == 'half' else False,
         'firstLastName': data.get("firstLastName"),
         'password': hashed_password,
         'privateRoomRequest': True,
@@ -557,10 +557,12 @@ def announce_game_with_room(game):
     # Publish the message to the "new_game" channel
     r.publish('new_game_with_room', message)
 
+
 def check_event_conflict(start_iso, end_iso):
     """
-    Check for existing events in the calendar that fall within the given time range.
-    Both start_iso and end_iso should be in ISO format with timezone info.
+    Check for room conflicts based on event titles:
+    - Block if any existing event has "Full Room"
+    - Allow up to two events with "Half Room"
     """
     events_result = service.events().list(
         calendarId=CALENDAR_ID,
@@ -569,22 +571,44 @@ def check_event_conflict(start_iso, end_iso):
         singleEvents=True,
         orderBy='startTime'
     ).execute()
-    events = events_result.get('items', [])
-    return len(events) > 0
 
-@app.route('/create-event', methods=['POST'])
-def create_calendar_event():
+    events = events_result.get('items', [])
+    
+    half_room_count = 0
+
+    for event in events:
+        title = event.get('summary', '').lower()
+        
+        if "full room" in title:
+            return True  # Conflict — full room blocks everything
+        
+        if "half room" in title:
+            half_room_count += 1
+            if half_room_count >= 2:
+                return True  # Conflict — only 2 half-room events allowed
+
+    return False  # No conflict
+
+
+@app.route('/create-game', methods=['POST'])
+def create_calendar_game():
     data = request.get_json()
+    print(data)
     title = data.get('title')
     description = data.get('description', '')
-    start_time = data.get('startTime')  # e.g., "2025-03-20T16:00:00Z"
-    end_time = data.get('endTime')      # e.g., "2025-03-20T20:00:00Z"
-
+    start_time = data.get('start_time')  # e.g., "2025-03-20T16:00:00Z"
+    end_time = data.get('end_time')      # e.g., "2025-03-20T20:00:00Z"
+    force = data.get("force")
+    
     if not (title and start_time and end_time):
+        print(f"title: {title}")
+        print(f"start_time: {start_time}")
+        print(f"end_time: {end_time}")
+        print(f"force: {force}")
         return jsonify({'error': 'Missing required fields: title, startTime, and endTime.'}), 400
 
     # Check for overlapping events. If any event is found, return an error.
-    if check_event_conflict(start_time, end_time):
+    if not force and check_event_conflict(start_time, end_time):
         return jsonify({
             'error': 'Time slot conflict: There is already an event scheduled during this time.'
         }), 409

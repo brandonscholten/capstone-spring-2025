@@ -639,23 +639,23 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
                 calendarErrorMessage = await gameApprovalChanel.send("The Back Room is full at this time, Take a look at the [calendar](https://calendar.google.com/calendar/u/0?cid=Ym9hcmRuYmV2eUBnbWFpbC5jb20) to double check if you'd like to add it anyways Approve this message")
                 
                 def calendarOverrideCheck(reaction, channel):
-                    return reaction.message.id == gameApprovalMessage.id
+                    return reaction.message.id == calendarErrorMessage.id
 
                 #Add the reactions
                 await calendarErrorMessage.add_reaction("👍")
                 await calendarErrorMessage.add_reaction("👎")
                 
                 try:
-                    reaction, user = bot.wait_for("reaction_add", check=calendarOverrideCheck)
+                    reaction, user = await bot.wait_for("reaction_add", check=calendarOverrideCheck)
 
                     if str(reaction.emoji) == "👍":
                         calendar['force'] = True
                         requests.post('http://127.0.0.1:5000/create-game', json=calendar)
-                        r = requests.post("http://127.0.0.1:5000/games", json=gameDict)
                     elif str(reaction.emoji) == "👎":
-                        deny_request(bot, gameApprovalMessage, usersDiscordID, email)
+                        await deny_request(bot, gameApprovalMessage, usersDiscordID, email)
+                        gameApproved = False
+                        return
                         #Reject This Game
-                        print("Rejected the override")    
                 except Exception as e:
                     print(f"ERROR at calendar override reaction: {e}")
         
@@ -687,7 +687,8 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
                 #email code goes here
 
         elif str(reaction.emoji) == '👎':
-            deny_request(bot, gameApprovalMessage, usersDiscordID, email)
+            await deny_request(bot, gameApprovalMessage, usersDiscordID, email)
+            gameApproved = False
     except Exception as e:
         print(f"Exception: {e}")
     
@@ -742,6 +743,9 @@ async def deny_request(bot, gameApprovalMessage, usersDiscordID, email):
     #Add the reactions
     await optionalDenyMessagePrompt.add_reaction("👍")
     await optionalDenyMessagePrompt.add_reaction("👎")
+
+    #Make denyMessageReason None
+    denyMessageReason=None
 
     try:
         denyMessageReasonReaction, user = await bot.wait_for("reaction_add")

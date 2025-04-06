@@ -43,7 +43,6 @@ async def run_bot():
     #Making this a bot.event ensures this can fire EVERY time a reaction is added 
     @bot.event
     async def on_reaction_add(reaction, user):
-        print("Handling reaction adds!!!!!!")
 
         if user.bot:
             #Don't handle the reactions from the bot, only users
@@ -194,7 +193,8 @@ async def handle_new_game_with_room(bot, message):
             payload["end_time"],
             payload["halfPrivateRoom"],
             payload["firstLastName"],
-            payload["privateRoomRequest"]
+            payload["privateRoomRequest"],
+            payload['password'] if 'password' in payload else None,
         )
 async def handle_new_event(bot, message):
     """
