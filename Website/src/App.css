@@ -205,4 +205,13 @@
 	
   }
 
+  /* Visibility transitions */
+.hover-container.invisible {
+	opacity: 0;
+  }
+  
+  .hover-container.visible {
+	opacity: 1;
+	transition: opacity 0.3s ease-in-out;
+  }
   
