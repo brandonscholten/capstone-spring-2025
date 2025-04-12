@@ -1,4 +1,4 @@
-import React, {  } from 'react';
+import React, { useState } from 'react';
 
 export default function LoginModal({ setIsModalOpen, handleLogin, loginFailed }) {
 
@@ -44,7 +44,7 @@ export default function LoginModal({ setIsModalOpen, handleLogin, loginFailed })
                             onChange={(e) => setPassword(e.target.value)}
                         />
                         <button
-                            onClick={handleLogin(username, password)}
+                            onClick={() => handleLogin(username, password)}
                         >
                             Login
                         </button>

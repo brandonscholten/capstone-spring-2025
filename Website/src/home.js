@@ -6,7 +6,6 @@ import CreateEventModal from "./components/CreateEventModal";
 import BoardGamesTab from "./components/Tabs/BoardGamesTab";
 import CreateBoardGameModal from "./components/CreateBoardGameModal";
 import LoginModal from "./components/LoginModal";
-import bcrypt from 'bcryptjs';
 import api from "./api/axiosClient";
 export default function Home() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -125,7 +124,7 @@ export default function Home() {
 
   return (
     <div className="flex justify-center min-h-screen bg-gray-100 p-4 relative">
-      <div className="w-full max-w-4xl bg-white shadow-md rounded-lg p-6">
+      <div className="w-full max-w-4xl bg-white shadow-md rounded-lg p-6 relative">
         {/* Tabs */}
         <div className="border-b border-black mb-4 flex justify-between items-center">
           <div className="flex">
@@ -162,9 +161,14 @@ export default function Home() {
             >
               Board Games
             </button>
-
-
           </div>
+          <div className="flex gap-2">
+          <button
+              onClick={() => setIsLoginModalOpen(true)}
+              className="px-4 py-2 text-sm text-[#942E2A] border border-[#942E2A] rounded hover:bg-[#942E2A] hover:text-white transition"
+            >
+              Admin Login
+          </button>
           {/* Create Buttons */}
           {activeTab === "games" && (
                     <button
@@ -192,6 +196,7 @@ export default function Home() {
                       Add Game
                     </button>
           )}
+          </div>
         </div>
 
         {/* Tab Content */}
@@ -229,7 +234,7 @@ export default function Home() {
         {isLoginModalOopen && (
           <LoginModal
             setIsModalOpen={setIsLoginModalOpen}
-            onLogin={handleLogin}
+            handleLogin={handleLogin}
             failed={loginFailed}
           />
         )}

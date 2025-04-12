@@ -13,7 +13,6 @@ CORS(app)  # Enable CORS for all routes
 
 r = redis.Redis(host='localhost', port=6379, db=0)
 
-# Update the connection string with your actual MySQL credentials and database name
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:BOTNBEVY@localhost:3306/botnbevy_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -422,7 +421,7 @@ def bgg_boardgame(game_id):
 #         SCUFFED ADMIN LOGIN ENDPOINTS     #
 #############################################
 
-@app.route('/login', method=['POST'])
+@app.route('/login', methods=['POST'])
 def login():
     #get the username and password from the request body
     #check that the credentials are valid
@@ -448,7 +447,7 @@ def login():
     return jsonify({'error': 'Invalid credentials'}), 401
 
 
-@app.route('/validate-session', mathod=['POST'])
+@app.route('/validate-session', methods=['POST'])
 def validate_session():
     #get the session token from the request body
     #check that the session token exists in the admin table
@@ -473,7 +472,7 @@ def validate_session():
 
     return jsonify({'valid': False, 'error': 'Invalid token'}), 401
 
-@app.route('/logout', method=['POST'])
+@app.route('/logout', methods=['POST'])
 def logout():
     #get the session token from the request
     #delete the session token from the admin user who owns it
@@ -484,7 +483,7 @@ def logout():
         admin.expires_at = None
         admin.session_token = None
         return jsonify({'success': True})
-    return jsonify('success': False)
+    return jsonify({'success': False})
 
 #############################################
 #         CLEANUP ENDPOINT                #
