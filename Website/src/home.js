@@ -5,6 +5,8 @@ import GamesTab from "./components/Tabs/GamesTab"
 import CreateEventModal from "./components/CreateEventModal";
 import BoardGamesTab from "./components/Tabs/BoardGamesTab";
 import CreateBoardGameModal from "./components/CreateBoardGameModal";
+import LoginModal from "./components/LoginModal";
+import bcrypt from 'bcryptjs';
 import api from "./api/axiosClient";
 export default function Home() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -16,7 +18,9 @@ export default function Home() {
   const [isGameModalOpen, setIsGameModalOpen] = useState(false);
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isBoardGameModalOpen, setIsBoardGameModalOpen] = useState(false);
+  const [isLoginModalOopen, setIsLoginModalOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loginFailed, setLoginFailed] = useState(false);
 
   useEffect(() => {
       localStorage.setItem("activeTab", activeTab);
@@ -75,17 +79,32 @@ export default function Home() {
       .then(() => fetchBoardGames()) // Re-fetch board games after successful POST
       .catch((error) => console.error("Error creating board game:", error));
   };
+
+  const handleLogin = async (username, password) => {
+        //send a post request to the API
+        //if successful, save the session token, return true
+        //if not successful, return false
+        try {
+          const response = api.post('/login', {username, password})
+          const token = response.data; 
+          localStorage.setItem('token', token)
+        } catch (error) {
+          localStorage.setItem('token', null)
+          setLoginFailed(true);
+        }
+  }
   
   // Check for token and simulate admin check.
   useEffect(() => {
     const token = localStorage.getItem("token");
-    setIsAdmin(true);
-    // if (token) {
-    //   setIsTokenValid(true);
-    //   if (token === "admin") {
-    //     setIsAdmin(true);
-    //   }
-    // }
+    if (token) {
+      //send a post request to validate the token
+      const response = api.post('/validate-session', token);
+      //if the token is valid, set the appropriate state variables to true
+      if (response.data = true) {
+        setIsAdmin(true);
+      }
+    }
   }, []);
 
   // Fetch events from the backend
@@ -204,6 +223,14 @@ export default function Home() {
           <CreateBoardGameModal
             setIsModalOpen={setIsBoardGameModalOpen}
             onAddBoardGame={(newBoardGame) => {createBoardGame(newBoardGame)}}
+          />
+        )}
+
+        {isLoginModalOopen && (
+          <LoginModal
+            setIsModalOpen={setIsLoginModalOpen}
+            onLogin={handleLogin}
+            failed={loginFailed}
           />
         )}
       </div>

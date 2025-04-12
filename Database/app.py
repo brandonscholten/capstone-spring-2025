@@ -3,8 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
 import requests
-import bcrypt
-from datetime import datetime, timedelta
+import bcrypt, uuid
+from datetime import datetime, timedelta, timezone
 import redis
 import json
 
@@ -91,6 +91,16 @@ class Game(db.Model):
     # Link to a catalogue game (optional)
     catalogue_id = db.Column(db.Integer, db.ForeignKey('catalogue.id'), nullable=True)
     catalogue = db.relationship('Catalogue', backref=db.backref('games', lazy=True))
+
+# Admin user(s)
+class Admins(db.Model):
+    __tablename__ = 'admins'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(255), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    session_token = db.Column(db.String(1000), nullable=True)
+    session_exp = db.Column(db.String(255), nullable=True)
+
 
 #############################################
 #              ROUTES                     #
@@ -407,6 +417,74 @@ def bgg_boardgame(game_id):
         return Response(r.content, mimetype="application/xml")
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+#############################################
+#         SCUFFED ADMIN LOGIN ENDPOINTS     #
+#############################################
+
+@app.route('/login', method=['POST'])
+def login():
+    #get the username and password from the request body
+    #check that the credentials are valid
+    #if the credentials are valid, generate and return a new session token
+    #if the credentials are invalid, return an error
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+
+    admin = Admins.query.filter_by(username=username).first
+    if admin and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+        # Generate session token
+        token = str(uuid.uuid4())
+        expires_at = datetime.utcnow() + timedelta(minutes=60)
+
+        admin.session_token = token
+        admin.session_exp = expires_at.isoformat()
+
+        db.session.commit()
+
+        return jsonify({'token': token})
+
+    return jsonify({'error': 'Invalid credentials'}), 401
+
+
+@app.route('/validate-session', mathod=['POST'])
+def validate_session():
+    #get the session token from the request body
+    #check that the session token exists in the admin table
+    #if it exists, check that it isn't expired
+    #if it's not expired, extending the expiration and return true
+    #otherwise return false
+    data = request.json
+    token = data.get('token')
+
+    session = Admins.query.filter_by(session_token=token)
+    if session:
+        if session.expires_at > datetime.now(timezone.utc):
+            # Extend session
+            session.expires_at = datetime.utcnow() + timedelta(minutes=60)
+            db.session.commit()
+            return jsonify({'valid': True})
+        else:
+            # Session expired
+            session.expires_at = None
+            session.session_token = None
+            return jsonify({'valid': False, 'error': 'Session expired'}), 401
+
+    return jsonify({'valid': False, 'error': 'Invalid token'}), 401
+
+@app.route('/logout', method=['POST'])
+def logout():
+    #get the session token from the request
+    #delete the session token from the admin user who owns it
+    data = request.json
+    token = data.get('token')
+    admin = Admins.query.filter_by(session_token=token)
+    if admin:
+        admin.expires_at = None
+        admin.session_token = None
+        return jsonify({'success': True})
+    return jsonify('success': False)
 
 #############################################
 #         CLEANUP ENDPOINT                #

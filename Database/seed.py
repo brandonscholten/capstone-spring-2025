@@ -75,6 +75,14 @@ events = Table(
     Column('players', String(255), nullable=False),
 )
 
+admins = Table(
+    'admins', metadata,
+    Column('id', Integer, primary_key=True),
+    Column('username', String(255), nullable=False),
+    Column('password', String(255), nullable=False),
+    Column('session_token', String(1000), nullable=True), 
+    Column('session_exp', String(255), nullable=True),
+)
 
 # Drop existing tables with proper order to prevent circular dependency
 metadata.reflect(bind=engine)
