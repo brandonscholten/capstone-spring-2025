@@ -261,21 +261,25 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
             </div>
           </div>
           <div className="text-right mt-4 flex justify-end gap-2">
-            {initialData && (
-              <button
-                onClick={() => onDelete(initialData.id)}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg"
-              >
-                Delete Game
-              </button>
-            )}
-            <button
-              onClick={handleSubmit}
-              className="px-4 py-2 bg-[#3C574D] text-white rounded-lg"
-            >
-              Save Game
-            </button>
-          </div>
+			{initialData && (
+				<button
+				onClick={() => onDelete(initialData.id)}
+				className="px-4 py-2 bg-red-500 text-white rounded-lg hover:scale-105 transition-all group relative"
+				>
+				<span className="relative z-10">Delete Game</span>
+				<span className="absolute inset-0 bg-red-500 rounded-lg"></span>
+				<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-lg"></span>
+				</button>
+			)}
+			<button
+				onClick={handleSubmit}
+				className="px-4 py-2 bg-[#942E2A] text-white rounded-lg hover:scale-105 transition-all group relative"
+			>
+				<span className="relative z-10">Save Game</span>
+				<span className="absolute inset-0 bg-[#942E2A] rounded-lg"></span>
+				<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-lg"></span>
+			</button>
+		  </div>
         </div>
       </div>
 
@@ -326,19 +330,21 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
               />
             </div>
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowBookingPopup(false)}
-                className="px-4 py-2 bg-gray-300 text-black rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleBookingConfirm}
-                className="px-4 py-2 bg-[#3C574D] text-white rounded-lg"
-              >
-                Confirm Booking
-              </button>
-            </div>
+				<button
+					onClick={() => setShowBookingPopup(false)}
+					className="px-4 py-2 bg-gray-300 text-black rounded-lg hover:scale-105 transition-all"
+				>
+					Cancel
+				</button>
+				<button
+					onClick={handleBookingConfirm}
+					className="px-4 py-2 bg-[#942E2A] text-white rounded-lg hover:scale-105 transition-all group relative"
+				>
+					<span className="relative z-10">Confirm Booking</span>
+					<span className="absolute inset-0 bg-[#942E2A] rounded-lg"></span>
+					<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-lg"></span>
+				</button>
+			 </div>
           </div>
         </div>
       )}
