@@ -40,7 +40,6 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
   const [endTime, setEndTime] = useState(initialEndTime);
   const [numPlayers, setNumPlayers] = useState(initialData?.players || "");
   const [description, setDescription] = useState(initialData?.description || "");
-  const [gameImage, setGameImage] = useState(initialData?.image || "");
   const [organizer, setOrganizer] = useState(initialData?.organizer || "");
   const [password, setPassword] = useState('');
   
