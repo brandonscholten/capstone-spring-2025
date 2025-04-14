@@ -444,6 +444,46 @@ def add_participant():
     return jsonify({"message": "Participant added", "id": obj_id}), 200
 
 
+@app.route('/participants/remove', methods=['POST'])
+def remove_participant():
+    data = request.get_json()
+    model_type = data.get("type")
+    participant = data.get("participant")
+    obj_id = data.get("id")
+    
+    print(model_type, participant, obj_id)
+    if not model_type or model_type not in ['event', 'game']:
+        return jsonify({"error": "Invalid type. Must be 'event' or 'game'."}), 400
+    if not participant:
+        return jsonify({"error": "Missing participant."}), 400
+    if not obj_id:
+        return jsonify({"error": "Missing id."}), 400
+
+    # Determine which model to update
+    if model_type == 'event':
+        obj = Event.query.get(obj_id)
+        if not obj:
+            return jsonify({"error": "Event not found"}), 404
+    else:  # model_type == 'game'
+        obj = Game.query.get(obj_id)
+        if not obj:
+            return jsonify({"error": "Game not found"}), 404
+
+    if not obj.participants:
+        return jsonify({"error": "No participants to remove."}), 400
+
+    # Split the current participants and remove the target if it exists
+    participants = [p.strip() for p in obj.participants.split(',')]
+    if participant not in participants:
+        return jsonify({"error": "Participant not found."}), 404
+
+    participants.remove(participant)
+    obj.participants = ", ".join(participants) if participants else None
+
+    db.session.commit()
+    return jsonify({"message": "Participant removed", "id": obj_id}), 200
+
+
 # ----- BGG API Proxy Endpoints -----
 @app.route('/bgg/search', methods=['GET'])
 def bgg_search():
