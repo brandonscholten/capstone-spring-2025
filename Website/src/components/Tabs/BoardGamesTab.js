@@ -100,11 +100,14 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
       <div
         style={{
           ...style,
-          padding: '12px'
+          padding: '12px',
+		  display: 'flex',     
+      	justifyContent: 'center', 
+      	alignItems: 'center'  
         }}
         key={game.id}
         onClick={() => setSelectedGame(game)}
-        className="mx-auto relative rounded-lg shadow-lg p-4 flex flex-col items-center overflow-hidden border border-gray-200"
+        className="relative"
       >
         <BoardGameCard 
           isAdmin={isAdmin} 
