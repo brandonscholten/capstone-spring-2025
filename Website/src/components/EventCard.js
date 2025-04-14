@@ -125,7 +125,7 @@ export default function EventCard({ event, isValid, resetEvents }) {
 			<img
 				src="/b&b_crest.png"
 				alt="Bot N Bevy Crest"
-				className="w-full h-full object-cover rounded-lg"
+				className="w-full h-full object-contain rounded-lg"
 			/>
     </div>
 				

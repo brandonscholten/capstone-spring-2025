@@ -87,7 +87,7 @@ export default function BoardGameCard({ game, alreadyFlipped = false, onFlip }) 
           <img
             src="/b&b_crest.png"
             alt="Bot N Bevy Crest"
-            className="w-full h-full object-cover rounded-lg"
+            className="w-full h-full object-contain rounded-lg"
           />
         </div>
         
