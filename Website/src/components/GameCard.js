@@ -131,135 +131,157 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
   
 
   export default function GameCard({ isAdmin, game, resetGames }) {
-    const [isRSVPModalOpen, setRSVPModalOpen] = useState(false);
-    const [isEditModalOpen, setEditModalOpen] = useState(false);
-    const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
+	const [isRSVPModalOpen, setRSVPModalOpen] = useState(false);
+	const [isEditModalOpen, setEditModalOpen] = useState(false);
+	const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
   
-    // Handle edit click: check token or prompt for password via modal.
-    const handleEdit = async () => {
-      const token = null; // Replace with: localStorage.getItem("token")
-      if(isAdmin){
-        setEditModalOpen(true);
-        return;
-      }
-      if (!token) {
-        setPasswordModalOpen(true);
-        return;
-      }
-      // If token exists, open edit modal directly.
-      setEditModalOpen(true);
-    };
+	// Handle edit click: check token or prompt for password via modal.
+	const handleEdit = async () => {
+	  const token = null; // Replace with: localStorage.getItem("token")
+	  if(isAdmin){
+		setEditModalOpen(true);
+		return;
+	  }
+	  if (!token) {
+		setPasswordModalOpen(true);
+		return;
+	  }
+	  // If token exists, open edit modal directly.
+	  setEditModalOpen(true);
+	};
   
-    // Get the formatted date and time for display.
-    const { dateDisplay, timeDisplay } = formatEventDateTime(game.startTime, game.endTime);
+	// Get the formatted date and time for display.
+	const { dateDisplay, timeDisplay } = formatEventDateTime(game.startTime, game.endTime);
   
-    return (
-      <>
-        <div
-          key={game.id}
-          className="relative mb-4 p-4 border rounded-lg shadow flex space-x-4"
+	// Use a CSS class for the permanent animation
+	const animatedBorderStyles = {
+	  position: 'relative',
+	  backgroundColor: 'white',
+	  borderRadius: '0.5rem',
+	  zIndex: 1,
+	  '&::before, &::after': {
+		content: "''",
+		position: 'absolute',
+		inset: '-4px',
+		borderRadius: 'calc(0.5rem + 4px)',
+		backgroundImage: 'conic-gradient(from var(--angle), #576b1e, #8ea37e, #bdcc7a, #c4cad5, #d7c2cb, #f8aa68, #576b1e)',
+		zIndex: -1,
+		animation: 'border-rotate 3s linear infinite'
+	  },
+	  '&::before': {
+		filter: 'blur(1.2rem)',
+		opacity: '0.5'
+	  }
+	};
+  
+	return (
+		<>
+		  {/* Outer container with gradient border */}
+		  <div className="relative mb-4 rounded-lg p-[3px] overflow-hidden bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] animate-gradient">
+      {/* Inner white card content */}
+      <div 
+        key={game.id}
+        className="rounded-lg shadow p-4 flex space-x-4 bg-white relative"
+      >
+        {/* Edit Icon (always visible) */}
+        <button
+          onClick={handleEdit}
+          className="absolute top-2 right-2 text-gray-600 hover:text-black z-10"
+          title="Edit Game"
         >
-          {/* Edit Icon (always visible) */}
-          <button
-            onClick={handleEdit}
-            className="absolute top-2 right-2 text-gray-600 hover:text-black"
-            title="Edit Game"
-          >
-            ✏️
-          </button>
+          ✏️
+        </button>
   
-          <div className="flex-1 flex">
-            <div className="w-1/2">
-              <h2 className="text-xl font-bold mb-2">{game.title}</h2>
-              <div className="grid gap-y-1">
-                <p>
-                  <span className="font-semibold text-gray-700">Organizer:</span> {game.organizer}
-                </p>
-                <p>
-                  <span className="font-semibold text-gray-700">Players:</span> {game.players}
-                </p>
-                <p>
-                  <span className="font-semibold text-gray-700">Date:</span> {dateDisplay}
-                </p>
-                <p>
-                  <span className="font-semibold text-gray-700">Time:</span> {timeDisplay}
-                </p>
-                <p>
-                  <span className="font-semibold text-gray-700">Participants:</span> {game.participants ? game.organizer + ", " + game.participants : game.organizer}
-                </p>
-              </div>
-              <button
-                onClick={() => setRSVPModalOpen(true)}
-                className="mt-4 px-4 py-2 bg-[#942E2A] text-white rounded"
-              >
-                RSVP
-              </button>
+        <div className="flex-1 flex">
+          <div className="w-1/2">
+            <h2 className="text-xl font-bold mb-2">{game.title}</h2>
+            <div className="grid gap-y-1">
+              <p>
+                <span className="font-semibold text-gray-700">Organizer:</span> {game.organizer}
+              </p>
+              <p>
+                <span className="font-semibold text-gray-700">Players:</span> {game.players}
+              </p>
+              <p>
+                <span className="font-semibold text-gray-700">Date:</span> {dateDisplay}
+              </p>
+              <p>
+                <span className="font-semibold text-gray-700">Time:</span> {timeDisplay}
+              </p>
+              <p>
+                <span className="font-semibold text-gray-700">Participants:</span> {game.participants ? game.organizer + ", " + game.participants : game.organizer}
+              </p>
             </div>
-            <div className="w-1/2 pl-4 border-l flex items-center">
-              <p>{game.description}</p>
-            </div>
+            <button
+              onClick={() => setRSVPModalOpen(true)}
+              className="mt-4 px-4 py-2 bg-[#942E2A] text-white rounded hover:scale-105 transition-all group relative"
+            >
+              <span className="relative z-10">RSVP</span>
+              <span className="absolute inset-0 bg-[#942E2A] rounded"></span>
+              <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded"></span>
+            </button>
+          </div>
+          <div className="w-1/2 pl-4 border-l flex items-center">
+            <p>{game.description}</p>
           </div>
         </div>
+      </div>
+    </div>
+	  
+		  {/* Modals */}
+		  {/* ... rest of your code with modals ... */}
+		
+	
   
-        {isRSVPModalOpen && (
-          <RSVPModal
-            isOpen={isRSVPModalOpen}
-            onClose={() => setRSVPModalOpen(false)}
-            eventData={game} // Passing game details to the modal.
-            type={"game"}
-            refresh={resetGames} // Refresh the games list after RSVP.
-          />
-        )}
-        {isEditModalOpen && (
-          <CreateGameModal
-            setIsModalOpen={setEditModalOpen}
-            initialData={game}
-            onSubmit={(updatedGame) => {
-              // Send an update call to the backend with updatedGame.
-              console.log(updatedGame)
-              fetch(`http://localhost:5000/games/${updatedGame.id}`, {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(updatedGame),
-              })
-                .then((res) => res.json())
-                .then(()=> {resetGames()})
-                .catch((error) => console.error("Error creating game:", error));
-              setEditModalOpen(false);
-            }}
-            //FIX THIS IT'S INSECURE. ANYONE CAN HIT THIS API AND DELETE WITHOUT A PASSWORD
-            //
-            //
-            //
-            //
-            onDelete={
-              // Delete the game by id.
-              (gameId) => {
-                fetch(`http://localhost:5000/games`, {
-                  method: "DELETE",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ id: gameId }),
-                })
-                  .then((res) => res.json())
-                  .then(()=> {resetGames()})
-                  .catch((error) => console.error("Error deleting game:", error));
-                setEditModalOpen(false);
-              }
-            }
-          />
-        )}
-        {isPasswordModalOpen && (
-          <PasswordVerifyModal
-            gameId={game.id}
-            onClose={() => setPasswordModalOpen(false)}
-            onSuccess={() => setEditModalOpen(true)}
-          />
-        )}
-      </>
-    );
+		{isRSVPModalOpen && (
+		  <RSVPModal
+			isOpen={isRSVPModalOpen}
+			onClose={() => setRSVPModalOpen(false)}
+			eventData={game}
+			type={"game"}
+			refresh={resetGames}
+		  />
+		)}
+		{isEditModalOpen && (
+		  <CreateGameModal
+			setIsModalOpen={setEditModalOpen}
+			initialData={game}
+			onSubmit={(updatedGame) => {
+			  console.log(updatedGame)
+			  fetch(`http://localhost:5000/games/${updatedGame.id}`, {
+				method: "PUT",
+				headers: {
+				  "Content-Type": "application/json",
+				},
+				body: JSON.stringify(updatedGame),
+			  })
+				.then((res) => res.json())
+				.then(()=> {resetGames()})
+				.catch((error) => console.error("Error creating game:", error));
+			  setEditModalOpen(false);
+			}}
+			onDelete={(gameId) => {
+			  fetch(`http://localhost:5000/games`, {
+				method: "DELETE",
+				headers: {
+				  "Content-Type": "application/json",
+				},
+				body: JSON.stringify({ id: gameId }),
+			  })
+				.then((res) => res.json())
+				.then(()=> {resetGames()})
+				.catch((error) => console.error("Error deleting game:", error));
+			  setEditModalOpen(false);
+			}}
+		  />
+		)}
+		{isPasswordModalOpen && (
+		  <PasswordVerifyModal
+			gameId={game.id}
+			onClose={() => setPasswordModalOpen(false)}
+			onSuccess={() => setEditModalOpen(true)}
+		  />
+		)}
+	  </>
+	);
   }
-  

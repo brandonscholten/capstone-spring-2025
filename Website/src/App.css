@@ -215,3 +215,12 @@
 	transition: opacity 0.3s ease-in-out;
   }
   
+  /* adds the infinite gradient animation to games cards */
+  @keyframes gradient {
+	0% { background-position: 100% 0; }
+	100% { background-position: 0 0; }
+  }
+  
+  .animate-gradient {
+	animation: gradient 3s linear infinite;
+  }
