@@ -120,39 +120,41 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
   };
 
   return (
-    <div className="w-full max-w-6xl bg-white shadow-md rounded-lg p-6">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold mb-2">Filter Board Games</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <input type="text" placeholder="Title" value={filterTitle} onChange={(e) => setFilterTitle(e.target.value)} className="p-2 border rounded" />
-          <input type="text" placeholder="Number of Players" value={filterPlayers} onChange={(e) => setFilterPlayers(e.target.value)} className="p-2 border rounded" />
-          <input type="text" placeholder="Difficulty" value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)} className="p-2 border rounded" />
-          <input type="text" placeholder="Time to Play (e.g., 60-90)" value={filterDuration} onChange={(e) => setFilterDuration(e.target.value)} className="p-2 border rounded" />
-        </div>
-      </div>
+    <div className="w-full max-w-6xl gradient-bg rounded-lg p-2">
+    	<div className="w-full bg-white shadow-md rounded-lg p-6">
+		<div className="mb-4">
+			<h3 className="text-lg font-semibold mb-2">Filter Board Games</h3>
+			<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+			<input type="text" placeholder="Title" value={filterTitle} onChange={(e) => setFilterTitle(e.target.value)} className="p-2 border rounded" />
+			<input type="text" placeholder="Number of Players" value={filterPlayers} onChange={(e) => setFilterPlayers(e.target.value)} className="p-2 border rounded" />
+			<input type="text" placeholder="Difficulty" value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)} className="p-2 border rounded" />
+			<input type="text" placeholder="Time to Play (e.g., 60-90)" value={filterDuration} onChange={(e) => setFilterDuration(e.target.value)} className="p-2 border rounded" />
+			</div>
+		</div>
 
-      {/*virtualized grid to help with performance*/}
-      <div style={{ height: 800 }}> {/* Fixed height container */}
-        <AutoSizer>
-          {({ width }) => (
-            <FixedSizeGrid
-              className="boardgames-grid"
-              columnCount={columnCount}
-              columnWidth={width / columnCount}
-              height={800}
-              rowCount={rowCount}
-              rowHeight={520} // Adjust based on your card height
-              width={width}
-              overscanRowCount={1}
-            >
-              {Cell}
-            </FixedSizeGrid>
-          )}
-        </AutoSizer>
-      </div>
+		{/*virtualized grid to help with performance*/}
+		<div style={{ height: 800 }}> {/* Fixed height container */}
+			<AutoSizer>
+			{({ width }) => (
+				<FixedSizeGrid
+				className="boardgames-grid"
+				columnCount={columnCount}
+				columnWidth={width / columnCount}
+				height={800}
+				rowCount={rowCount}
+				rowHeight={520} // Adjust based on your card height
+				width={width}
+				overscanRowCount={1}
+				>
+				{Cell}
+				</FixedSizeGrid>
+			)}
+			</AutoSizer>
+		</div>
 
-      {isModalOpen && <CreateBoardGameModal setIsModalOpen={setIsModalOpen} fetchBoardGames={fetchBoardGames} onAddBoardGame={onAddBoardGame}/>}
-      {selectedGame && <BoardGameModal fetchBoardGames={fetchBoardGames} isAdmin={isAdmin} game={selectedGame} onClose={() => setSelectedGame(null)} />}
-    </div>
+		{isModalOpen && <CreateBoardGameModal setIsModalOpen={setIsModalOpen} fetchBoardGames={fetchBoardGames} onAddBoardGame={onAddBoardGame}/>}
+		{selectedGame && <BoardGameModal fetchBoardGames={fetchBoardGames} isAdmin={isAdmin} game={selectedGame} onClose={() => setSelectedGame(null)} />}
+		</div>
+	</div>
   );
 }
