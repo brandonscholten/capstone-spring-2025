@@ -13,31 +13,19 @@
   }
 }
 
-/*.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}*/
-
 .App-header {
     background: linear-gradient(to right, #576b1e 0%,#8ea37e 15%,#bdcc7a 45%,#c4cad5 59%,#d7c2cb 84%,#f8aa68 98%);
-    min-height: 10px; /* Increased to accommodate stacked elements */
+    min-height: 10px; 
     display: flex;
-    flex-direction: column; /* Changed to column to stack logo above nav */
-    align-items: center; /* Center items horizontally */
-    justify-content: center; /* Center items vertically */
-    /*padding: 0.5rem;*/
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     position: sticky;
     top: 0;
     z-index: 1000;
     color: black;
-	/*padding-bottom: 1rem;*/
+
 }
 
 .header-spacer {
@@ -48,19 +36,18 @@
 		width: 100%;
 		display: flex;
 		justify-content: center;
-		/*padding: 0.5rem 0; */
-		margin-bottom: 0; /* Remove the previous margin if not needed */
+		margin-bottom: 0; 
 }
 
 .logo {
-    height: 100px; /* Slightly larger logo */
+    height: 100px; 
 }
   
 .nav-links {
     display: flex;
     gap: 2rem;
     width: 100%;
-    justify-content: center; /* Center the navigation links */
+    justify-content: center; 
 }
   
   .nav-links a {
@@ -141,9 +128,9 @@
 	transform: rotateY(180deg);
 	display: flex;
 	flex-direction: column;
-	justify-content: flex-start; /* Changed from center to flex-start */
+	justify-content: flex-start; 
 	align-items: center;
-	color: black; /* Changed from white to black, as your text seems to be dark */
+	color: black; 
 	padding: 1rem;
 	text-align: center;
 	overflow-y: auto;
@@ -189,18 +176,18 @@
 	opacity: 0.5;
   }
   
-/* Update hover effects to include expansion */
+
 
 /* Card expansion on hover */
 .container:hover .card {
 	transform: scale(1.05);
 	transition: transform 0.3s ease;
-	z-index: 10; /* Ensure hovered card appears above others */
+	z-index: 10; 
   }
   
   /* Keep the flipped card behavior intact while adding scale */
   .container:hover .card.flip {
-	transform: rotateY(180deg) scale(1.05) !important; /* Combine both transforms */
+	transform: rotateY(180deg) scale(1.05) !important; 
 	transition: transform 0.25s ease-in-out;
 	
   }

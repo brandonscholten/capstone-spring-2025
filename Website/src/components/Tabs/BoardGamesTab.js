@@ -87,7 +87,7 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
     });
   };
   
-  // Grid cell renderer - combines your existing functionality with virtualization
+  // Grid cell renderer - combines existing functionality with virtualization
   const Cell = ({ columnIndex, rowIndex, style }) => {
     const index = rowIndex * columnCount + columnIndex;
     
@@ -133,7 +133,7 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
 		</div>
 
 		{/*virtualized grid to help with performance*/}
-		<div style={{ height: 800 }}> {/* Fixed height container */}
+		<div style={{ height: 800 }}> 
 			<AutoSizer>
 			{({ width }) => (
 				<FixedSizeGrid
@@ -142,7 +142,7 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
 				columnWidth={width / columnCount}
 				height={800}
 				rowCount={rowCount}
-				rowHeight={520} // Adjust based on your card height
+				rowHeight={520} 
 				width={width}
 				overscanRowCount={1}
 				>

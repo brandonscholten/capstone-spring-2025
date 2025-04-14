@@ -61,7 +61,6 @@ export default function BoardGameModal({ isAdmin, game, onClose, fetchBoardGames
           className="h-40 mb-2 text-sm text-gray-800 scroll-hover"
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(game.description) }}
         />
-        {/* Removed the old close button from here */}
       </div>
     </div>
   );

@@ -227,12 +227,6 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
         </div>
       </div>
     </div>
-	  
-		  {/* Modals */}
-		  {/* ... rest of your code with modals ... */}
-		
-	
-  
 		{isRSVPModalOpen && (
 		  <RSVPModal
 			isOpen={isRSVPModalOpen}
