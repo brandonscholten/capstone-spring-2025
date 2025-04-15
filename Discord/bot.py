@@ -82,10 +82,10 @@ async def run_bot():
         gameEventtype = None
 
         if channel.id == GAMES_CHANNEL_ID:
-            gameEventtype = "game"
+            gameEventType = "game"
         else:
             #Going to be event, check previously ensure its only event or game
-            gameEventtype = "event"
+            gameEventType = "event"
 
 
         if not user_has_other_reaction:
@@ -122,13 +122,17 @@ async def run_bot():
 
             #Make the JSON
             participantRemoveJSON = {
-                "type": gameEventtype,
-                "participant": user.id,
+                "type": gameEventType,
+                "participant": str(user.id),
                 "id": gameID
             }
 
+            print(f"participantRemoveJSON: {participantRemoveJSON}")
+
             #Make the API call to add to the RSVP
-            requests.post("http://127.0.0.1:5000/participants/remove", json=participantRemoveJSON)
+            response = requests.post("http://127.0.0.1:5000/participants/remove", json=participantRemoveJSON)
+
+            print(f"REMOVAL: {response.json()}")
 
     #Add the RSVP reaction event
     #Making this a bot.event ensures this can fire EVERY time a reaction is added 
@@ -290,7 +294,6 @@ async def run_bot():
                         users_who_reacted = await reaction.users().flatten()  # Get a list of users who reacted
                         if user in users_who_reacted:
                             thumbsUp = True
-                            # Do something if the user reacted with 👍
                             break
 
                   #Check and see if the uses still has a 👍 when time to remind, if not, then dont send it
@@ -299,7 +302,7 @@ async def run_bot():
                     await user.send("Your game is starting soon!", embed=message.embeds[0])
 
             if delay > 0:
-                task = bot.loop.create_task(send_dm_reminder(message))  # ✅ This is the scheduling
+                task = bot.loop.create_task(send_dm_reminder(message))
                 # scheduled_reminders[(user.id, message.id)] = task  # Store task to cancel later
             elif delay < 0:
                 #Send an immediate reminder
@@ -342,14 +345,17 @@ async def run_bot():
 
             #Make the JSON
             participantRemoveJSON = {
-                "type": gameEventtype,
-                "participant": user.id,
+                "type": gameEventType,
+                "participant": str(user.id),
                 "id": gameID
             }
 
-            #Make the API call to add to the RSVP
-            requests.post("http://127.0.0.1:5000/participants/remove", json=participantRemoveJSON)
+            print(f"participantRemoveJSON: {participantRemoveJSON}")
 
+            #Make the API call to add to the RSVP
+            response = requests.post("http://127.0.0.1:5000/participants/remove", json=participantRemoveJSON)
+
+            print(f"REMOVAL: {response.json()}")
 
     # When the bot is ready, sync commands and start the Redis listener
     @bot.event
