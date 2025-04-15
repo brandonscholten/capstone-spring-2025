@@ -40,6 +40,96 @@ async def run_bot():
 
     bot = commands.Bot(command_prefix="/", intents=intents)
 
+    #Ad the RSVP reaction removal of 👍 only!
+    #Fires EVERY time a 👍 is removed
+    @bot.event
+    async def on_reaction_remove(reaction, user):
+        #Ensures the bot's reaction removal does not activate this
+        if user.bot:
+            return
+        
+        #Grabs the channel ID from the env file to ensure proper channel for reaction handling
+        GAMES_CHANNEL_ID = int(os.getenv("GAMES_CHANNEL_ID"))
+        EVENTS_CHANNEL_ID = int(os.getenv("EVENTS_CHANNEL_ID"))
+
+        message = reaction.message
+        channel = message.channel
+
+        #Ensures only Game and Event channel reaction removals are handled
+        if channel.id not in {GAMES_CHANNEL_ID, EVENTS_CHANNEL_ID} :
+            return
+        
+        #Ensures the removal emoji is a 👍
+        if str(reaction.emoji) != '👍':
+            return
+
+        #Now cycle through and see if the user has NO reaction left (no toggle, just removal of 👍)
+        user_has_other_reaction = False
+        for react in message.reactions:
+            if react.emoji != '👍':
+                users = [u async for u in react.users()]
+                if user in users:
+                    user_has_other_reaction = True
+                    break
+
+        #Make the variables to grab the details of the game/event after the checks for valid reaction removal pass
+        embed = message.embeds[0]
+        embedCopy = discord.Embed(title=embed.title,
+        description=embed.description,
+        color=discord.Color.green())
+
+        #Determine if the reaction belongs to a game or event
+        gameEventtype = None
+
+        if channel.id == GAMES_CHANNEL_ID:
+            gameEventtype = "game"
+        else:
+            #Going to be event, check previously ensure its only event or game
+            gameEventtype = "event"
+
+
+        if not user_has_other_reaction:
+            #Now remove from the embed
+            #Hold the current number attending
+            numberAttending = None
+
+            #Go through the fields and find the correct field of start time, players and number attending
+            for field in embed.fields:
+              if field.name == "Number Attending":
+                numberAttending = field.value
+
+
+            #Call this function to handle the removal of the RSVP to a game in terms of message player going field
+            # in embedded message
+            await removeRSVPToGame(numberAttending, reaction, message, embed, embedCopy, True)
+
+
+            #Unschedule the reminder
+
+
+            #Get the game id and hold it, this will be for the JSON and posting to the backend
+            gameID = None
+
+
+            for field in embed.fields:
+                print(f"{field}: {field.value}")
+                if field.name == "\u200b":
+                    print("Found the hidden field")
+                    gameID = field.value
+                    break
+
+            print(f"gameID: {gameID}")
+
+            #Make the JSON
+            participantRemoveJSON = {
+                "type": gameEventtype,
+                "participant": user.id,
+                "id": gameID
+            }
+
+            #Make the API call to add to the RSVP
+            requests.post("http://127.0.0.1:5000/participants/remove", json=participantRemoveJSON)
+
     #Add the RSVP reaction event
     #Making this a bot.event ensures this can fire EVERY time a reaction is added 
     @bot.event
@@ -69,6 +159,8 @@ async def run_bot():
             #Reaction was not in the games channel, so dont do anything
             return
         
+        print(f"channel.id: {channel.id}")
+
         #Flag for the participant JSON
         if channel.id == GAMES_CHANNEL_ID :
             gameEventType = "game"
@@ -125,13 +217,13 @@ async def run_bot():
 
             #Make the JSON
             participantAddJSON = {
-                "type": gameEventtype,
+                "type": gameEventType,
                 "participant": user.id,
                 "id": gameID
             }
 
             #Make the API call to add to the RSVP
-            requests.post("http://127.0.0.1:5000/participants/add", json=participantAddJSON)
+            response = requests.post("http://127.0.0.1:5000/participants/add", json=participantAddJSON)
 
             #
             # Schedule the reminder!
@@ -303,6 +395,8 @@ async def handle_new_game_with_room(bot, message):
             payload["privateRoomRequest"],
             payload['password'] if 'password' in payload else None,
         )
+
+
 async def handle_new_event(bot, message):
     """
     Processes a Redis message from the 'new_event' channel, formats the event data
