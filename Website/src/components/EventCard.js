@@ -106,17 +106,22 @@ export default function EventCard({ event, isValid, resetEvents }) {
   // Get the formatted date and time for display.
   const { dateDisplay, timeDisplay } = formatEventDateTime(event.startTime, event.endTime);
   const index = event.id % 10; // Use modulo to limit the range
-  const cardStyle = { '--delay': `${index * 0.15}s` };
+  const cardStyle = { 
+	'--delay': `${index * 0.15}s`,
+    margin: '0 auto',      // Center horizontally 
+    width: '100%',         // Take full width of parent
+    maxWidth: '500px',     // But limit to 500px max
+	};
   
   return (
     <>
-			<div
+		<div
 		ref={cardRef}
 		key={event.id}
 		data-id={event.id}
 		onMouseEnter={() => handleMouseEnter(event.id)}
 		onMouseLeave={handleMouseLeave}
-		className="container mx-auto relative hover-container"
+		className="container relative hover-container"
 		style={cardStyle}
 		>
 		<div className={`card ${isFlipped ? "flip" : ""}`}>
