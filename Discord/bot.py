@@ -53,8 +53,13 @@ async def run_bot():
         #Ensures this only fires for the specific channels and messages
         message = reaction.message
         channel = message.channel
+        
 
+        #Keeps a track of game or event type to ensure the proper API endpoint is called
         gameEventtype = None
+
+        #Will only allow for a decrement of the number of players RSVPed if they RSVPd before
+        previouslyRSVPd = False
 
         #Grabs the channel ID from the env file to ensure proper channel for reaction handling
         GAMES_CHANNEL_ID = int(os.getenv("GAMES_CHANNEL_ID"))
@@ -76,10 +81,26 @@ async def run_bot():
             #Check if the new reaction (parameter) is not equal=
             #to the reaction found, remove it
             if reactions.emoji != reaction.emoji:
+                #Update the flag specifically for going from 👍 to 👎
+                if str(reaction.emoji) == '👎' and str(reactions.emoji) == '👍':
+                    users = [u async for u in reactions.users()]
+                    
+                    if user in users:
+                        previouslyRSVPd = True  # User changed from 👍 to 👎
+
                 #Remove it
                 users = [u async for u in reactions.users()]
                 if user in users:
                     await reactions.remove(user)
+
+
+        #Grabs the embed message
+        embed = message.embeds[0]
+
+        #Holds the new embed for accurate count of attending
+        embedCopy = discord.Embed(title=embed.title,
+        description=embed.description,
+        color=discord.Color.green())
 
         #
         #   Handle reaction addition
@@ -93,10 +114,7 @@ async def run_bot():
             #Get the game id and hold it, this will be for the JSON and posting to the backend
             gameID = None
 
-            #Grab the embedded message
-            embeddedMessage = message.embeds[0]
-
-            for field in embeddedMessage.fields:
+            for field in embed.fields:
                 print(f"{field}: {field.value}")
                 if field.name == "\u200b":
                     print("Found the hidden field")
@@ -127,64 +145,24 @@ async def run_bot():
 
             #Hold the max players
             maxPlayers = None
-            maxPlayersInt = 0
 
             #Hold the current number attending
             numberAttending = None
-            numberAttendingInt = 0
 
             #Go through the fields and find the correct field of start time, players and number attending
-            for field in embeddedMessage.fields:
+            for field in embed.fields:
               if field.name == "Start Time":
                   startTime = field.value
               elif field.name == "Players":
                   maxPlayers = field.value
-                  maxPlayersInt = int(maxPlayers)
               elif field.name == "Number Attending":
                   numberAttending = field.value
-                  print(type(numberAttending))
-                  numberAttendingInt = int(numberAttending)
 
-            
-            
-            #Now check if there is enough slots left to join
-            if maxPlayersInt < (numberAttendingInt + 1):
-                #the max players has already been hit, dont RSVP
-                #Remove the 👍 reaction
-                await message.remove_reaction('👍', user)
 
-                #Now send an ephemeral message saying the game they RSVPd to is full
-                #await reaction.response.send_message(content="Can not RSVP to the following game, it is already full", embed=embed, ephemeral=True)
-
-                #Now send an dm saying the game they RSVPd to is full
-                await user.send(content="Can not RSVP to the following game, it is already full", embed=embeddedMessage);
-
-                #Return on this function as it is done
-                return
-            else:
-
-                #The player can be accommodated, now add 1 to the attending field
-                newNumberAttendingInt = numberAttendingInt + 1
-                print(newNumberAttendingInt)
-
-                #Making a new version of the embed
-                embedCopy = discord.Embed(title=embeddedMessage.title)
-
-                #Iterate through the copy and modify the Number Attending field with new value
-                for field in embeddedMessage.fields:
-                    print(f"{field.name}: {field.value}")
-                    if field.name == "Number Attending":
-                        embedCopy.add_field(name=field.name, value=newNumberAttendingInt, inline=field.inline)
-                    else:
-                        embedCopy.add_field(name=field.name, value=field.value, inline=field.inline)
-
-                print("-----embedCopy----")
-                for field in embedCopy.fields:
-                    print(f"{field.name}: {field.value}")
-
-                #Now update the message with the new embed
-                await message.edit(embed=embedCopy)
-
+            #Make the call to the new player calculation,
+            #This is used more than once and makes the code easier
+            #To debug and reuse
+            await rsvpToGame(numberAttending, maxPlayers, reaction, message, user, embed, embedCopy)
 
             # Convert the start time from 12hr EST to 24hr UTC
             startTime = est12hrTo24hrUTC(startTime)
@@ -238,43 +216,21 @@ async def run_bot():
         elif str(reaction.emoji) == '👎':
             print("Not RSVping, or removing RSVP for the event")
 
-            #Grab the embedded message
-            embeddedMessage = message.embeds[0]
-
 
             #Now remove from the embed
             #Hold the current number attending
             numberAttending = None
-            numberAttendingInt = 0
 
             #Go through the fields and find the correct field of start time, players and number attending
-            for field in embeddedMessage.fields:
+            for field in embed.fields:
               if field.name == "Number Attending":
                 numberAttending = field.value
-                print(type(numberAttending))
-                numberAttendingInt = int(numberAttending)
 
-            #The player can be accommodated, now subtract 1 to the attending field, don't go lower than 1,
-                if (newNumberAttendingInt - 1) > 0:
-                    newNumberAttendingInt = numberAttendingInt - 1
-                    print(newNumberAttendingInt)
-                elif (newNumberAttendingInt - 1) == 0:
-                    #Host has to be rsvp'd 
-                    newNumberAttendingInt = 1
 
-                #Making a new version of the embed
-                embedCopy = discord.Embed(title=embeddedMessage.title)
+            #Call this function to handle the removal of the RSVP to a game in terms of message player going field
+            # in embedded message
+            await removeRSVPToGame(numberAttending, reaction, message, embed, embedCopy, previouslyRSVPd)
 
-                #Iterate through the copy and modify the Number Attending field with new value
-                for field in embeddedMessage.fields:
-                    print(f"{field.name}: {field.value}")
-                    if field.name == "Number Attending":
-                        embedCopy.add_field(name=field.name, value=newNumberAttendingInt, inline=field.inline)
-                    else:
-                        embedCopy.add_field(name=field.name, value=field.value, inline=field.inline)
-
-            #Now update the message with the new embed
-            await message.edit(embed=embedCopy)
 
             #Unschedule the reminder
 
@@ -282,10 +238,8 @@ async def run_bot():
             #Get the game id and hold it, this will be for the JSON and posting to the backend
             gameID = None
 
-            #Grab the embedded message
-            embeddedMessage = message.embeds[0]
 
-            for field in embeddedMessage.fields:
+            for field in embed.fields:
                 print(f"{field}: {field.value}")
                 if field.name == "\u200b":
                     print("Found the hidden field")
@@ -613,6 +567,107 @@ def est12hrTo24hrUTC(estString):
 
     #4.) Return the string of the UTC format
     return utcTimeObject.isoformat()
+
+
+async def rsvpToGame(currentAttendingString, maxPlayersString, reaction, message, user, embed, embedCopy):
+    #Will convert the string over to a int and return
+    #Used for the attending max comparison
+    
+    #Convert the two
+    maxPlayersInt = int(maxPlayersString)
+    numberAttendingInt = int(currentAttendingString)
+
+
+    #Converstion of maxPlayersString into an int
+    print(f"rsvpToGame, int(maxPlayersString): should be {maxPlayersString}(type: {type(maxPlayersString)}), but is {maxPlayersInt} (type: {type(maxPlayersInt)})")
+    print(f"rsvpToGame, int(currentAttending): should be {currentAttendingString}(type: {type(currentAttendingString)}), but is {numberAttendingInt} (type: {type(numberAttendingInt)})")
+
+
+    if str(reaction.emoji) == '👍':#Now check if there is enough slots left to join
+            if maxPlayersInt < (numberAttendingInt + 1):
+                print(f"rsvpToGame, maxPlayersInt < (numberAttendingInt + 1): {maxPlayersInt} < {numberAttendingInt + 1}")
+
+                #the max players has already been hit, dont RSVP
+                #Remove the 👍 reaction
+                await message.remove_reaction('👍', user)
+
+                #Now send an ephemeral message saying the game they RSVPd to is full
+                #await reaction.response.send_message(content="Can not RSVP to the following game, it is already full", embed=embed, ephemeral=True)
+
+                #Now send an dm saying the game they RSVPd to is full
+                await user.send(content="Can not RSVP to the following game, it is already full", embed=embed);
+
+                #Return on this function as it is done
+                return
+            else:
+
+                #The player can be accommodated, now add 1 to the attending field
+                numberAttendingInt = numberAttendingInt + 1
+                print(f"rsvpToGame: numberAttendingInt = numberAttendingInt + 1 : {numberAttendingInt}")
+
+
+                #Iterate through the copy and modify the Number Attending field with new value
+                #The embed copy was declared above
+                for field in embed.fields:
+                    print(f"{field.name}: {field.value}")
+                    if field.name == "Number Attending":
+                        embedCopy.add_field(name=field.name, value=numberAttendingInt, inline=field.inline)
+                    else:
+                        embedCopy.add_field(name=field.name, value=field.value, inline=field.inline)
+
+                print("-----embedCopy----")
+                for field in embedCopy.fields:
+                    print(f"{field.name}: {field.value}")
+
+                #Now update the message with the new embed
+                await message.edit(embed=embedCopy)
+
+
+async def removeRSVPToGame(numberAttendingSting, reaction, message, embed, embedCopy, wasRSVPd):
+    print(f"removeRSVPToGame, wasRSVPD: {wasRSVPd}")
+
+    #Inital check to ensure there was a previous RSVP to then decrement off the going counter
+    if not wasRSVPd:
+        return
+
+
+    #Convert the two
+    numberAttendingInt = int(numberAttendingSting)
+
+
+    #Conversion of maxPlayersString into an int
+    
+    print(f"removeRSVPToGame, int(numberAttendingSting): should be {numberAttendingSting}(type: {type(numberAttendingSting)}), but is {numberAttendingInt} (type: {type(numberAttendingInt)})")
+
+    #The player can be accommodated, now subtract 1 to the attending field, don't go lower than 1,
+    if (numberAttendingInt - 1) >= 1:
+        print(f"removeRSVPToGame, (numberAttendingInt - 1) >= 1: {numberAttendingInt - 1} >= 1")
+
+        #No need to ensure the value is min 1, the check has happened
+        numberAttendingInt = numberAttendingInt - 1
+        print(f"removeRSVPToGame, numberAttendingInt - 1: {numberAttendingInt} ")
+    elif (numberAttendingInt - 1) < 1:
+        print(f"removeRSVPToGame, (numberAttendingInt - 1) < 1: {numberAttendingInt - 1} < 1")
+        
+
+        #Host has to be rsvp'd, also should catch the failed conversion
+        numberAttendingInt = 1
+
+    #Iterate through the copy and modify the Number Attending field with new value
+    for field in embed.fields:
+        print(f"{field.name}: {field.value}")
+        if field.name == "Number Attending":
+            embedCopy.add_field(name=field.name, value=numberAttendingInt, inline=field.inline)
+        else:
+            embedCopy.add_field(name=field.name, value=field.value, inline=field.inline)
+
+
+    #Now update the message with the new embed
+    await message.edit(embed=embedCopy)
+
+
+    
+
     
 
 def main():
