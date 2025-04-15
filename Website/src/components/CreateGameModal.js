@@ -87,9 +87,14 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
 
   const handleStartDateChange = (e) => {
     const date = e.target.value;
-    const d = new Date(date);
-    const day = d.getDay();
-    if (day >= 3 && day <= 6) {
+    const [year, month, day] = date.split("-").map(Number);
+    const d = new Date(year, month - 1, day); // This uses local time!
+    const convertedDate = d.getDay();
+
+    console.log(`CreateGameModal date: ${date}`)
+    console.log(`CreateGameModal d: ${d}`);
+    console.log(`CreateGameModal, convertedDate: ${convertedDate}`);
+    if (convertedDate >= 3 && convertedDate <= 6) {
       setStartDate(date);
       setDateError(null);
     } else {
