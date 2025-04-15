@@ -101,7 +101,9 @@ async def run_bot():
 
             #Call this function to handle the removal of the RSVP to a game in terms of message player going field
             # in embedded message
-            await removeRSVPToGame(numberAttending, reaction, message, embed, embedCopy, True)
+            #Only call if the type is game
+            if gameEventType == 'game':
+                await removeRSVPToGame(numberAttending, reaction, message, embed, embedCopy, True)
 
 
             #Unschedule the reminder
@@ -208,7 +210,7 @@ async def run_bot():
             
             
             #Get the game id and hold it, this will be for the JSON and posting to the backend
-            gameID = None
+            gameEventID = None
 
             for field in embed.fields:
                 print(f"{field}: {field.value}")
@@ -258,7 +260,9 @@ async def run_bot():
             #Make the call to the new player calculation,
             #This is used more than once and makes the code easier
             #To debug and reuse
-            await rsvpToGame(numberAttending, maxPlayers, reaction, message, user, embed, embedCopy)
+            #Only do this if the type is game
+            if gameEventType == 'game':
+                await rsvpToGame(numberAttending, maxPlayers, reaction, message, user, embed, embedCopy)
 
             # Convert the start time from 12hr EST to 24hr UTC
             startTime = est12hrTo24hrUTC(startTime)
@@ -324,7 +328,9 @@ async def run_bot():
 
             #Call this function to handle the removal of the RSVP to a game in terms of message player going field
             # in embedded message
-            await removeRSVPToGame(numberAttending, reaction, message, embed, embedCopy, previouslyRSVPd)
+            #Only call if the type is game
+            if gameEventType == 'game':
+                await removeRSVPToGame(numberAttending, reaction, message, embed, embedCopy, previouslyRSVPd)
 
 
             #Unschedule the reminder

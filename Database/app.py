@@ -553,7 +553,8 @@ def announce_event(event):
         'end_time': event.end_time.isoformat(),
         'price': event.price,
         'game': event.game.title if event.game else None,
-        'participants': event.participants
+        'participants': event.participants,
+        'id': event.id,
     })
     # Publish to the 'new_event' channel
     r.publish('new_event', message)
