@@ -26,19 +26,19 @@ export default function Home() {
     }, [activeTab]);
 
   const fetchEvents = async () => {
-    api.get("http://localhost:5000/events")
+    api.get("/events")
     .then((response) => setEvents(response.data))
     .catch((error) => console.error("Error fetching games:", error));
   };
 
   const fetchGames = async() => {
-    api.get("http://localhost:5000/games")
+    api.get("/games")
     .then((response) => setGames(response.data))
     .catch((error) => console.error("Error fetching games:", error));
   };
 
   const fetchBoardGames = async () => {
-    api.get("http://localhost:5000/catalogue")
+    api.get("/catalogue")
     .then((response) => setBoardGames(response.data))
     .catch((error) => console.error("Error fetching games:", error));
   };
@@ -127,40 +127,58 @@ export default function Home() {
       <div className="w-full max-w-4xl bg-white shadow-md rounded-lg p-6 relative">
         {/* Tabs */}
         <div className="border-b border-black mb-4 flex justify-between items-center">
-          <div className="flex">
-          
-            <button
-              onClick={() => setActiveTab("events")}
-              className={`px-4 py-2 rounded-t-lg border ${
-                activeTab === "events"
-                  ? "bg-[#942E2A] text-white border-t border-l border-r border-[#942E2A] font-semibold"
-                  : "bg-white text-black border-black"
-              }`}
-            >
-              Events
-            </button>
+		<div className="flex">
+			
+			<button
+			onClick={() => setActiveTab("events")}
+			className={`px-4 py-2 rounded-t-lg border relative group transition-all ${
+				activeTab === "events"
+				? "bg-[#942E2A] text-white border-t border-l border-r border-[#942E2A] font-semibold"
+				: "bg-white text-black border-black hover:scale-105"
+			}`}
+			>
+			<span className="relative z-10">Events</span>
+			{activeTab !== "events" && (
+				<>
+				<span className="absolute inset-0 bg-white rounded-t-lg"></span>
+				<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-t-lg"></span>
+				</>
+			)}
+			</button>
 
-            <button
-              onClick={() => setActiveTab("games")}
-              className={`px-4 py-2 rounded-t-lg border ${
-                activeTab === "games"
-                  ? "bg-[#942E2A] text-white border-t border-l border-r border-[#942E2A] font-semibold"
-                  : "bg-white text-black border-black"
-              }`}
-            >
-              Games
-            </button>
+			<button
+			onClick={() => setActiveTab("games")}
+			className={`px-4 py-2 rounded-t-lg border relative group transition-all ${
+				activeTab === "games"
+				? "bg-[#942E2A] text-white border-t border-l border-r border-[#942E2A] font-semibold"
+				: "bg-white text-black border-black hover:scale-105"
+			}`}
+			>
+			<span className="relative z-10">Games</span>
+			{activeTab !== "games" && (
+				<>
+				<span className="absolute inset-0 bg-white rounded-t-lg"></span>
+				<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-t-lg"></span>
+				</>
+			)}
+			</button>
 
-            <button
-              onClick={() => setActiveTab("boardgames")}
-              className={`px-4 py-2 rounded-t-lg border ${
-                activeTab === "boardgames"
-                  ? "bg-[#942E2A] text-white border-t border-l border-r border-[#942E2A] font-semibold"
-                  : "bg-white text-black border-black"
-              }`}
-            >
-              Board Games
-            </button>
+			<button
+			onClick={() => setActiveTab("boardgames")}
+			className={`px-4 py-2 rounded-t-lg border relative group transition-all ${
+				activeTab === "boardgames"
+				? "bg-[#942E2A] text-white border-t border-l border-r border-[#942E2A] font-semibold"
+				: "bg-white text-black border-black hover:scale-105"
+			}`}
+			>
+			<span className="relative z-10">Board Games</span>
+			{activeTab !== "boardgames" && (
+				<>
+				<span className="absolute inset-0 bg-white rounded-t-lg"></span>
+				<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-t-lg"></span>
+				</>
+			)}
+			</button>
           </div>
           <div className="flex gap-2">
           <button
@@ -170,33 +188,38 @@ export default function Home() {
               Admin Login
           </button>
           {/* Create Buttons */}
-          {activeTab === "games" && (
-                    <button
-                      onClick={() => setIsGameModalOpen(true)}
-                      className="px-4 py-2 bg-[#942E2A] text-white rounded-lg"
-                    >
-                      Create Game
-                    </button>
-          )}
+		  {activeTab === "games" && (
+			<button
+				onClick={() => setIsGameModalOpen(true)}
+				className="px-4 py-2 bg-[#942E2A] text-white rounded-lg hover:scale-105 transition-all group relative"
+			>
+				<span className="relative z-10">Create Game</span>
+				<span className="absolute inset-0 bg-[#942E2A] rounded-lg"></span>
+				<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-lg"></span>
+			</button>
+		)}
 
-          {activeTab === "events" && isAdmin && (
-                    <button
-                      onClick={() => setIsEventModalOpen(true)}
-                      className="px-4 py-2 bg-[#942E2A] text-white rounded-lg"
-                    >
-                      Create Event
-                    </button>
-          )}
+			{activeTab === "events" && isAdmin && (
+			<button
+				onClick={() => setIsEventModalOpen(true)}
+				className="px-4 py-2 bg-[#942E2A] text-white rounded-lg hover:scale-105 transition-all group relative"
+			>
+				<span className="relative z-10">Create Event</span>
+				<span className="absolute inset-0 bg-[#942E2A] rounded-lg"></span>
+				<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-lg"></span>
+			</button>
+			)}
 
-          {activeTab === "boardgames" && isAdmin && (
-                    <button
-                      onClick={() => setIsBoardGameModalOpen(true)}
-                      className="px-4 py-2 bg-[#942E2A] text-white rounded-lg"
-                    >
-                      Add Game
-                    </button>
-          )}
-          </div>
+		{activeTab === "boardgames" && isAdmin && (
+			<button
+				onClick={() => setIsBoardGameModalOpen(true)}
+				className="px-4 py-2 bg-[#942E2A] text-white rounded-lg hover:scale-105 transition-all group relative"
+			>
+				<span className="relative z-10">Add Game</span>
+				<span className="absolute inset-0 bg-[#942E2A] rounded-lg"></span>
+				<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-lg"></span>
+			</button>
+		)}
         </div>
 
         {/* Tab Content */}

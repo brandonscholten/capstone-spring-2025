@@ -7,17 +7,40 @@ import bcrypt, uuid
 from datetime import datetime, timedelta, timezone
 import redis
 import json
+from dotenv import load_dotenv
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from datetime import datetime
+import base64
+import os
+from dotenv import load_dotenv, dotenv_values
+from PIL import Image
+import io
+import boto3
+#Loads the env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 r = redis.Redis(host='localhost', port=6379, db=0)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:BOTNBEVY@localhost:3306/botnbevy_db'
+load_dotenv()
+# Update the connection string with your actual MySQL credentials and database name
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("MYSQL_DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
+SERVICE_ACCOUNT_FILE = os.getenv('GOOGLE_SERVICE_ACCOUNT_FILE')
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+CALENDAR_ID = os.getenv('CALENDAR_ID')
+credentials = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES
+)
+service = build('calendar', 'v3', credentials=credentials)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")  # or your preferred region
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")  # Must be verified in SES
+ses_client = boto3.client("ses", region_name=AWS_REGION)
 
 #############################################
 #               MODELS                      #
@@ -63,7 +86,7 @@ class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)
-    image = db.Column(db.String(255), nullable=True)
+    image = db.Column(db.LargeBinary, nullable=True)
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
     price = db.Column(db.String(50), nullable=True)
@@ -83,7 +106,6 @@ class Game(db.Model):
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
     description = db.Column(db.Text, nullable=False)
-    image = db.Column(db.String(255), nullable=True)
     players = db.Column(db.String(50), nullable=False)  # e.g., "2-4"
     participants = db.Column(db.Text, nullable=True)  # comma-separated list
     password = db.Column(db.String(255), nullable=True)
@@ -186,7 +208,10 @@ def get_events():
             "id": event.id,
             "title": event.title,
             "description": event.description,
-            "image": event.image,
+            "image": (
+                "data:image/jpeg;base64," + base64.b64encode(event.image).decode("utf-8")
+                if event.image else None
+            ),
             "startTime": event.start_time.isoformat(),
             "endTime": event.end_time.isoformat(),
             "price": event.price,
@@ -195,13 +220,25 @@ def get_events():
         })
     return jsonify(result)
 
+
 @app.route('/events', methods=['POST'])
 def create_event():
     data = request.get_json()
+    image_data = data.get("image")
+    image_bytes = None
+
+    if image_data:
+        try:
+            # Resize the image to reduce resolution
+            image_bytes = resize_image(image_data)
+        except Exception as e:
+            print(e)
+            return jsonify({"error": "Image processing failed: " + str(e)}), 500
+
     new_event = Event(
         title=data.get("title"),
         description=data.get("description"),
-        image=data.get("image"),
+        image=image_bytes,  # Store the resized image bytes
         start_time=datetime.fromisoformat(data.get("startTime")),
         end_time=datetime.fromisoformat(data.get("endTime")),
         price=data.get("price"),
@@ -211,7 +248,7 @@ def create_event():
     )
     db.session.add(new_event)
     db.session.commit()
-    
+
     announce_event(new_event)
     return jsonify({"message": "Event created", "id": new_event.id}), 201
 
@@ -222,16 +259,25 @@ def update_event(event_id):
     if not event:
         return jsonify({"error": "Event not found"}), 404
 
-    # Update fields if provided in the request
+    # Update text fields
     event.title = data.get("title", event.title)
     event.description = data.get("description", event.description)
-    event.image = data.get("image", event.image)
     event.start_time = datetime.fromisoformat(data.get("startTime")) if "startTime" in data else event.start_time
     event.end_time = datetime.fromisoformat(data.get("endTime")) if "endTime" in data else event.end_time
     event.price = data.get("price", event.price)
     event.game_id = data.get("game", event.game_id)
     event.participants = data.get("participants", event.participants)
     event.recurring = data.get("recurring", event.recurring)
+
+    # Handle image update
+    image_data = data.get("image")
+    if image_data:
+        try:
+            # Resize and convert the new image
+            event.image = resize_image(image_data)
+        except Exception as e:
+            print(e)
+            return jsonify({"error": "Image processing failed: " + str(e)}), 500
 
     db.session.commit()
     return jsonify({"message": "Event updated successfully", "id": event.id}), 200
@@ -281,7 +327,6 @@ def create_game():
         start_time=datetime.fromisoformat(data.get("startTime")),
         end_time=datetime.fromisoformat(data.get("endTime")),
         description=data.get("description"),
-        image=data.get("image"),
         players=data.get("players"),
         password=hashed_password,
         participants=data.get("participants"),
@@ -291,6 +336,35 @@ def create_game():
     db.session.commit()
     announce_game(new_game)
     return jsonify({"message": "Game created", "id": new_game.id}), 201
+
+
+
+@app.route('/games_with_room', methods=['POST'])
+def create_game_with_room():
+    data = request.get_json()
+    
+    hashed_password = bcrypt.hashpw(data.get("password").encode('utf-8'), bcrypt.gensalt()).decode('utf-8') if data.get("password") else None
+    print(data.get("halfPrivateRoom"))
+    new_game = {
+        'title': data.get("title"),
+        'organizer': data.get("organizer"),
+        "start_time":datetime.fromisoformat(data.get("startTime")),
+        "end_time":datetime.fromisoformat(data.get("endTime")),
+        'description': data.get("description"),
+        'players': data.get("players"),
+        'participants': data.get("participants"),
+        'email': data.get("email"),
+        'halfPrivateRoom': True if data.get("halfPrivateRoom") == 'half' else False,
+        'firstLastName': data.get("firstLastName"),
+        'password': hashed_password,
+        'privateRoomRequest': True,
+    }
+    # async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersName, game_name, game_description, 
+    #                                         game_max_players, game_date, game_end_time, halfPrivateRoom, firstLastName, 
+    #                                         privateRoomRequest):
+    announce_game_with_room(new_game)
+    return jsonify({"message": "Game created"}), 201
+
 
 @app.route('/games', methods=['DELETE'])
 def delete_game_entry():
@@ -319,7 +393,6 @@ def update_game(game_id):
     game.start_time = datetime.fromisoformat(data.get("startTime")) if "startTime" in data else game.start_time
     game.end_time = datetime.fromisoformat(data.get("endTime")) if "endTime" in data else game.end_time
     game.description = data.get("description", game.description)
-    game.image = data.get("image", game.image)
     game.players = data.get("players", game.players)
     game.password = hashed_password  # Store the updated hashed password if provided
     game.participants = data.get("participants", game.participants)
@@ -545,6 +618,270 @@ def announce_game(game):
     })
     # Publish the message to the "new_game" channel
     r.publish('new_game', message)
+    
+  
+def announce_game_with_room(game):
+    """
+    Publish game details to Redis so that the Discord bot can announce it.
+    """
+    message = json.dumps({
+        "title": game["title"],
+        "organizer": game["organizer"],
+        "start_time": game["start_time"].isoformat(),
+        "end_time": game["end_time"].isoformat(),
+        "description": game["description"],
+        "players": game["players"],
+        "participants": game["participants"],
+        "email": game["email"],
+        "halfPrivateRoom": game["halfPrivateRoom"],
+        "firstLastName": game["firstLastName"],
+        "privateRoomRequest": game["privateRoomRequest"]
+    })
+    # Publish the message to the "new_game" channel
+    r.publish('new_game_with_room', message)
+
+
+def check_event_conflict(start_iso, end_iso):
+    """
+    Check for room conflicts based on event titles:
+    - Block if any existing event has "Full Room"
+    - Allow up to two events with "Half Room"
+    """
+    events_result = service.events().list(
+        calendarId=CALENDAR_ID,
+        timeMin=start_iso,
+        timeMax=end_iso,
+        singleEvents=True,
+        orderBy='startTime'
+    ).execute()
+
+    events = events_result.get('items', [])
+    
+    half_room_count = 0
+
+    for event in events:
+        title = event.get('summary', '').lower()
+        
+        if "full room" in title:
+            return True  # Conflict — full room blocks everything
+        
+        if "half room" in title:
+            half_room_count += 1
+            if half_room_count >= 2:
+                return True  # Conflict — only 2 half-room events allowed
+
+    return False  # No conflict
+
+
+@app.route('/send-approval', methods=['POST'])
+def send_approval():
+    # Restrict access to local requests only
+    if request.remote_addr != '127.0.0.1':
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    data = request.get_json()
+    # Expected fields: 'name', 'email', 'eventTime', 'confirmationLink'
+    name = data.get('name')
+    to_email = data.get('email')
+    event_time = data.get('eventTime')
+    confirmation_link = data.get('confirmationLink')
+    
+    if not all([name, to_email, event_time, confirmation_link]):
+        return jsonify({"error": "Missing one or more required fields"}), 400
+    
+    # Build a professional, thematic HTML
+    subject = "Board & Bevy: Your Event Booking Has Been Approved!"
+    html_content = f"""
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Board & Bevy Approval</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; margin: 0; padding: 0;">
+        <div style="background-color: #333333; padding: 10px;">
+          <img src="https://i.ibb.co/0KK2k9t/bb-crest.png" alt="Board & Bevy Logo" style="height:60px;vertical-align:middle;">
+          <span style="color: #fff; font-size: 24px; margin-left: 10px;">Board & Bevy</span>
+        </div>
+        <div style="padding: 20px;">
+          <h2 style="color: #444;">Hello {name},</h2>
+          <p>We’re excited to let you know that your event booking request has been <strong>approved</strong>!</p>
+          <p>Event Time: <strong>{event_time}</strong></p>
+          <p style="margin-top: 20px;">To finalize your booking, please confirm your reservation by visiting the link below:</p>
+          <p>
+            <a href="{confirmation_link}" style="background-color: #fdbf2d; color: #000; padding: 10px 20px;
+               text-decoration: none; font-weight: bold; border-radius: 5px;">
+              Confirm Your Booking
+            </a>
+          </p>
+          <p>We can’t wait to see you at Board & Bevy, a Tabletop Pub in Kent, Ohio!</p>
+          <hr style="margin-top: 30px;"/>
+          <p style="font-size: 12px; color: #666;">If you have any questions or need to make changes, please reply to this email.</p>
+          <p style="font-size: 12px; color: #666;">Board & Bevy &copy; 2025</p>
+        </div>
+      </body>
+    </html>
+    """
+    send_response = send_email_via_ses(to_email, subject, html_content)
+    
+    if not send_response:
+        return jsonify({"error": "Failed to send approval email"}), 500
+    
+    return jsonify({"message": "Approval email sent successfully"}), 200
+
+@app.route('/send-rejection', methods=['POST'])
+def send_rejection():
+    # Restrict access to local requests only
+    if request.remote_addr != '127.0.0.1':
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    data = request.get_json()
+    # Expected fields: 'name', 'email', 'eventTime', 'reason'
+    name = data.get('name')
+    to_email = data.get('email')
+    event_time = data.get('eventTime')
+    reason = data.get('reason')
+    
+    if not all([name, to_email, event_time, reason]):
+        return jsonify({"error": "Missing one or more required fields"}), 400
+    
+    subject = "Board & Bevy: Your Event Booking Request"
+    html_content = f"""
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Board & Bevy Rejection</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; margin: 0; padding: 0;">
+        <div style="background-color: #333333; padding: 10px;">
+          <img src="https://i.ibb.co/0KK2k9t/bb-crest.png" alt="Board & Bevy Logo" style="height:60px;vertical-align:middle;">
+          <span style="color: #fff; font-size: 24px; margin-left: 10px;">Board & Bevy</span>
+        </div>
+        <div style="padding: 20px;">
+          <h2 style="color: #444;">Hello {name},</h2>
+          <p>Thank you for your interest in booking an event with Board & Bevy.</p>
+          <p>Unfortunately, we were unable to approve your booking request for <strong>{event_time}</strong>.</p>
+          <p><strong>Reason for Rejection:</strong> {reason}</p>
+          <p>We apologize for any inconvenience this may cause. If you have any questions or would like to discuss other possible times or arrangements, feel free to reach out.</p>
+          <hr style="margin-top: 30px;"/>
+          <p style="font-size: 12px; color: #666;">Thank you again for considering Board & Bevy for your event.</p>
+          <p style="font-size: 12px; color: #666;">Board & Bevy &copy; 2025</p>
+        </div>
+      </body>
+    </html>
+    """
+    
+    send_response = send_email_via_ses(to_email, subject, html_content)
+    
+    if not send_response:
+        return jsonify({"error": "Failed to send rejection email"}), 500
+    
+    return jsonify({"message": "Rejection email sent successfully"}), 200
+
+@app.route('/create-game', methods=['POST'])
+def create_calendar_game():
+    data = request.get_json()
+    print(data)
+    title = data.get('title')
+    description = data.get('description', '')
+    start_time = data.get('start_time')  # e.g., "2025-03-20T16:00:00Z"
+    end_time = data.get('end_time')      # e.g., "2025-03-20T20:00:00Z"
+    force = data.get("force")
+    
+    if not (title and start_time and end_time):
+        print(f"title: {title}")
+        print(f"start_time: {start_time}")
+        print(f"end_time: {end_time}")
+        print(f"force: {force}")
+        return jsonify({'error': 'Missing required fields: title, startTime, and endTime.'}), 400
+
+    # Check for overlapping events. If any event is found, return an error.
+    if not force and check_event_conflict(start_time, end_time):
+        return jsonify({
+            'error': 'Time slot conflict: There is already an event scheduled during this time.'
+        }), 409
+
+    # Build the event payload for Google Calendar.
+    event_body = {
+        'summary': title,
+        'description': description,
+        'start': {
+            'dateTime': start_time,
+            'timeZone': 'UTC'  # Adjust if necessary.
+        },
+        'end': {
+            'dateTime': end_time,
+            'timeZone': 'UTC'  # Adjust if necessary.
+        }
+    }
+
+    try:
+        created_event = service.events().insert(
+            calendarId=CALENDAR_ID,
+            body=event_body
+        ).execute()
+        return jsonify({
+            'message': 'Event created successfully',
+            'event': created_event
+        }), 201
+    except Exception as e:
+        return jsonify({'error': f'Failed to create event: {str(e)}'}), 500
+
+def resize_image(image_data, max_width=800, max_height=600):
+    # Remove the data URL header if present.
+    if image_data.startswith("data:"):
+        _, image_data = image_data.split(",", 1)
+    
+    # Decode the base64 string to raw image bytes.
+    image_bytes = base64.b64decode(image_data)
+    
+    # Open the image using Pillow.
+    image = Image.open(io.BytesIO(image_bytes))
+    
+    # Resize the image while maintaining aspect ratio.
+    image.thumbnail((max_width, max_height))
+    
+    # Convert to RGB if the image is in RGBA or palette mode.
+    if image.mode in ("RGBA", "P"):
+        image = image.convert("RGB")
+    
+    # Save the image to a bytes buffer in JPEG format.
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG")
+    
+    return buffer.getvalue()
+
+
+def send_email_via_ses(to_email, subject, html_content):
+    """
+    Sends an HTML email using AWS SES.
+    to_email    : str, recipient's email address
+    subject     : str, email subject
+    html_content: str, HTML string for the email body
+    """
+    try:
+        response = ses_client.send_email(
+            Source=SENDER_EMAIL,
+            Destination={
+                'ToAddresses': [to_email],
+            },
+            Message={
+                'Subject': {
+                    'Data': subject,
+                    'Charset': 'UTF-8'
+                },
+                'Body': {
+                    'Html': {
+                        'Data': html_content,
+                        'Charset': 'UTF-8'
+                    }
+                }
+            }
+        )
+        return response
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return None
+    
     
 if __name__ == '__main__':
     app.run(debug=True)
