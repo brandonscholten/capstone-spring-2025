@@ -47,7 +47,6 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
   const [selectedGameId, setSelectedGameId] = useState(initialData?.game || null);
   const [catalogueItems, setCatalogueItems] = useState([]);
   const [gameSuggestions, setGameSuggestions] = useState([]);
-  const [dateError, setDateError] = useState(null);
   const [timeError, setTimeError] = useState(null);
 
   const [showBookingPopup, setShowBookingPopup] = useState(false);
@@ -84,20 +83,12 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
     }
   }, [startTime, endTime]);
 
-  const handleStartDateChange = (e) => {
-    const date = e.target.value;
-    const d = new Date(date);
-    const day = d.getDay();
-    if (day >= 3 && day <= 6) {
-      setStartDate(date);
-      setDateError(null);
-    } else {
-      setDateError("Select Wednesday, Thursday, Friday, or Saturday.");
-    }
-  };
+  // Removed handleStartDateChange and related date restrictions.
+  // The date input now directly updates the state:
+  // onChange={(e) => setStartDate(e.target.value)}
 
   const handleSubmit = () => {
-    if (dateError || timeError) return;
+    if (timeError) return;
 
     const updatedStartTime = combineDateTime(startDate, startTime);
     const updatedEndTime = combineDateTime(startDate, endTime);
@@ -207,9 +198,8 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
                 type="date"
                 className="w-full border p-2 rounded"
                 value={startDate}
-                onChange={handleStartDateChange}
+                onChange={(e) => setStartDate(e.target.value)}
               />
-              {dateError && <p className="text-red-500 text-sm">{dateError}</p>}
 
               <label className="block mt-2 mb-1 font-semibold">Start Time</label>
               <input
@@ -264,16 +254,20 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
             {initialData && (
               <button
                 onClick={() => onDelete(initialData.id)}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg"
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:scale-105 transition-all group relative"
               >
-                Delete Game
+                <span className="relative z-10">Delete Game</span>
+                <span className="absolute inset-0 bg-red-500 rounded-lg"></span>
+                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-lg"></span>
               </button>
             )}
             <button
               onClick={handleSubmit}
-              className="px-4 py-2 bg-[#3C574D] text-white rounded-lg"
+              className="px-4 py-2 bg-[#942E2A] text-white rounded-lg hover:scale-105 transition-all group relative"
             >
-              Save Game
+              <span className="relative z-10">Save Game</span>
+              <span className="absolute inset-0 bg-[#942E2A] rounded-lg"></span>
+              <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-lg"></span>
             </button>
           </div>
         </div>
@@ -328,15 +322,17 @@ export default function CreateGameModal({ setIsModalOpen, initialData, onSubmit,
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowBookingPopup(false)}
-                className="px-4 py-2 bg-gray-300 text-black rounded-lg"
+                className="px-4 py-2 bg-gray-300 text-black rounded-lg hover:scale-105 transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleBookingConfirm}
-                className="px-4 py-2 bg-[#3C574D] text-white rounded-lg"
+                className="px-4 py-2 bg-[#942E2A] text-white rounded-lg hover:scale-105 transition-all group relative"
               >
-                Confirm Booking
+                <span className="relative z-10">Confirm Booking</span>
+                <span className="absolute inset-0 bg-[#942E2A] rounded-lg"></span>
+                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded-lg"></span>
               </button>
             </div>
           </div>

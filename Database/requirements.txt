@@ -1,2 +1,8 @@
 Flask
 mysql-connector-python
+bcrypt
+flask_sqlalchemy
+flask_migrate
+flask_cors
+redis
+pymysql
