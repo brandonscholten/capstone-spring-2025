@@ -104,7 +104,7 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
             ✕
           </button>
           <h2 className="text-xl font-bold mb-4 text-center">Verify Password</h2>
-          {error && <p className="text-red-500 mb-2">{error}</p>}
+		  {error && <p className="text-red-500 mb-2" role="alert" aria-live="assertive">{error}</p>}
           <input
             type="password"
             className="w-full border p-2 rounded mb-4"
@@ -187,9 +187,10 @@ function PasswordVerifyModal({ gameId, onClose, onSuccess }) {
         <button
           onClick={handleEdit}
           className="absolute top-2 right-2 text-gray-600 hover:text-black z-10"
-          title="Edit Game"
-        >
-          ✏️
+          aria-label="Edit game details"
+		>
+		<span aria-hidden="true">✏️</span>
+          
         </button>
   
         <div className="flex-1 flex">
