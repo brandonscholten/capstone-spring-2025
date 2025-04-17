@@ -98,6 +98,7 @@
     width: 100%;
     height: 500px;
     perspective: 800px;
+	cursor: pointer;
   }
   
   .card {
@@ -107,6 +108,9 @@
     transition: transform 1s ease-in-out;
     transform-style: preserve-3d;
 	transition-delay: 0s;
+	margin: 0 auto; 
+  left: 0; 
+  right: 0; 
   }
   
   .front,
@@ -117,6 +121,10 @@
     box-shadow: 0 0 5px 2px rgba(50, 50, 50, 0.25);
     position: absolute;
     backface-visibility: hidden;
+	top: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
   }
   
   .front {
@@ -180,14 +188,14 @@
 
 /* Card expansion on hover */
 .container:hover .card {
-	transform: scale(1.05);
+	transform: translateZ(0);
 	transition: transform 0.3s ease;
 	z-index: 10; 
   }
   
   /* Keep the flipped card behavior intact while adding scale */
   .container:hover .card.flip {
-	transform: rotateY(180deg) scale(1.05) !important; 
+	transform: rotateY(180deg) !important; 
 	transition: transform 0.25s ease-in-out;
 	
   }
@@ -211,3 +219,26 @@
   .animate-gradient {
 	animation: gradient 3s linear infinite;
   }
+
+  /* Add this to your CSS */
+.board-game-card-container {
+	will-change: transform, opacity;
+	transform: translateZ(0);
+	backface-visibility: hidden;
+  }
+  
+  /* Force hardware acceleration for gradient animations */
+  .gradient-bg {
+	transform: translateZ(0);
+	will-change: background-position;
+	backface-visibility: hidden;
+  }
+  
+  /* Simple loading spinner */
+  @keyframes spin {
+	to { transform: rotate(360deg); }
+  }
+  .animate-spin {
+	animation: spin 1s linear infinite;
+  }
+
