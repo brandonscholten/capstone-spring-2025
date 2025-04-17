@@ -123,6 +123,7 @@ export default function EventCard({ event, isValid, resetEvents }) {
 		onMouseLeave={handleMouseLeave}
 		className="container relative hover-container"
 		style={cardStyle}
+		
 		>
 		<div className={`card ${isFlipped ? "flip" : ""}`}>
 			{/* Front of card */}

@@ -77,21 +77,49 @@ async def handle_new_event(bot, message):
         print("Events channel not found!")
         return
 
+    # Custom Bot & Bevy color - dark red that matches your website
+    BOT_AND_BEVY_COLOR = discord.Color.from_rgb(148, 46, 42)  # #942E2A
+    
+    with open("../Website/public/b&b_crest.png", "rb") as f:
+        crest_image = discord.File(f, filename="bb_crest.png")
+
+    # Create a more styled embed
     embed = discord.Embed(
-        title=data.get('title', 'No Title'),
-        description=data.get('description', ''),
-        color=discord.Color.blue()
+        title=f"📅 **{data.get('title', 'New Event')}**",
+        description=f"{data.get('description', 'Join us for this exciting event!')}",
+        color=BOT_AND_BEVY_COLOR,
     )
-    embed.add_field(name="Start Time", value=data.get('start_time', 'Unknown'), inline=False)
-    embed.add_field(name="End Time", value=data.get('end_time', 'Unknown'), inline=False)
-    embed.add_field(name="Price", value=data.get('price', 'Free'), inline=False)
+    
+    # Add an author field for context
+    embed.set_author(
+        name="Bot & Bevy Event Announcement", 
+        icon_url="attachment://bb_crest.png"  # Your logo
+    )
+    
+    # Add image if available, otherwise use a default event image
+    if data.get('image'):
+        embed.set_thumbnail(url=data.get('image'))
+    else:
+        embed.set_thumbnail(url="attachment://bb_crest.png")
+    
+    # Format date and time for better readability
+    start_time = data.get('start_time', 'TBA')
+    end_time = data.get('end_time', 'TBA')
+
+    # Add fields with improved formatting (some inline, some not)
+    embed.add_field(name="📆 Date & Time", value=f"**Start:** {start_time}\n**End:** {end_time}", inline=False)
+    embed.add_field(name="💰 Price", value=data.get('price', 'Free'), inline=True)
     
     if data.get('game'):
-        embed.add_field(name="Game", value=data.get('game'), inline=False)
+        embed.add_field(name="🎲 Game", value=data.get('game'), inline=True)
     if data.get('participants'):
-        embed.add_field(name="Participants", value=data.get('participants'), inline=False)
+        embed.add_field(name="👥 Participants", value=data.get('participants'), inline=False)
     
-    await channel.send(embed=embed)
+    # Set timestamp for the event (if you can parse the date string)
+    # This would show the time in each user's local timezone
+    # embed.timestamp = datetime.datetime.strptime(start_time, '%Y-%m-%d %I:%M %p')
+    
+    await channel.send(file=crest_image, embed=embed)
 
 async def handle_new_game(bot, message):
     """
@@ -111,23 +139,49 @@ async def handle_new_game(bot, message):
         print("Games channel not found!")
         return
 
+    # Bot & Bevy green
+    GAME_COLOR = discord.Color.from_rgb(87, 107, 30)   #576b1e
+    
+    with open("../Website/public/b&b_crest.png", "rb") as f:
+        crest_image = discord.File(f, filename="bb_crest.png")
+
     embed = discord.Embed(
-        title=data.get('title', 'No Title'),
-        description=data.get('description', ''),
-        color=discord.Color.green()
+        title=f"🎲 **{data.get('title', 'Game Session')}**",
+        description=f"{data.get('description', 'Join us for this game session!')}",
+        color=GAME_COLOR,
     )
-    embed.add_field(name="Organizer", value=data.get('organizer', 'Unknown'), inline=False)
-    embed.add_field(name="Start Time", value=data.get('start_time', 'Unknown'), inline=False)
-    embed.add_field(name="End Time", value=data.get('end_time', 'Unknown'), inline=False)
-    embed.add_field(name="Players", value=data.get('players', 'N/A'), inline=False)
+    
+    
+    embed.set_author(
+        name="Bot & Bevy Game Session", 
+        icon_url="attachment://bb_crest.png"
+    )
+    
+
+    if data.get('image'):
+        embed.set_thumbnail(url=data.get('image'))
+    else:
+        embed.set_thumbnail(url="attachment://bb_crest.png")
+    
+    # Format date and time for better readability
+    start_time = data.get('start_time', 'TBA')
+    end_time = data.get('end_time', 'TBA')
+
+    # added fields with improved formatting 
+    embed.add_field(name="📆 Date & Time", value=f"**Start:** {start_time}\n**End:** {end_time}", inline=False)
+    embed.add_field(name="👤 Organizer", value=data.get('organizer', 'Bot & Bevy Staff'), inline=True)
+    
+    if data.get('players'):
+        embed.add_field(name="👥 Players Needed", value=data.get('players', 'N/A'), inline=True)
     
     if data.get('participants'):
-        embed.add_field(name="Participants", value=data.get('participants'), inline=False)
-    if data.get('catalogue'):
-        embed.add_field(name="Catalogue", value=data.get('catalogue'), inline=False)
+        embed.add_field(name="🧩 Current Players", value=data.get('participants'), inline=False)
     
-    await channel.send(embed=embed)
-
+    if data.get('catalogue'):
+        embed.add_field(name="📚 Game Type", value=data.get('catalogue'), inline=True)
+    
+    await channel.send(file=crest_image, embed=embed)
+    
 async def redis_listener(bot):
     """
     Listens on the Redis 'new_event' and 'new_game' channels for incoming announcements
