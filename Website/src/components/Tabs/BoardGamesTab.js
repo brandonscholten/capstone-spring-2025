@@ -10,6 +10,9 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const containerRef = useRef(null);
+  const [containerHeight, setContainerHeight] = useState('calc(100vh - 120px)'); // Total container height
+  const [gridHeight, setGridHeight] = useState('calc(100vh - 300px)');          // Grid height
   
   // Filter states
   const [filterTitle, setFilterTitle] = useState("");
@@ -46,6 +49,27 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
     };
   }, []);
 
+  // Calculate available heights on mount and window resize
+  useEffect(() => {
+    const calculateHeights = () => {
+      // Set overall container height (subtract for header/nav/footer)
+      const totalHeight = window.innerHeight - 120; // Adjust based on your layout
+      setContainerHeight(`${totalHeight}px`);
+      
+      if (containerRef.current) {
+        const filterHeight = containerRef.current.querySelector('.filter-section').offsetHeight;
+        // Reserve space for padding, header, etc.
+        const availableHeight = totalHeight - filterHeight - 80; // Adjust this value as needed
+        setGridHeight(`${availableHeight}px`);
+      }
+    };
+    
+    calculateHeights();
+    window.addEventListener('resize', calculateHeights);
+    
+    return () => window.removeEventListener('resize', calculateHeights);
+  }, []);
+
   // Apply filters
   const filteredBoardGames = boardGames
     .filter((game) => {
@@ -80,9 +104,13 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
   };
 
   return (
-    <div className="w-full max-w-6xl gradient-bg rounded-lg p-2">
-      <div className="w-full bg-white shadow-md rounded-lg p-6">
-        <div className="mb-4">
+    <div 
+      ref={containerRef} 
+      className="w-full max-w-6xl gradient-bg rounded-lg p-2 flex flex-col"
+      style={{ height: containerHeight, maxHeight: containerHeight }}
+    >
+      <div className="w-full bg-white shadow-md rounded-lg p-6 flex flex-col flex-grow overflow-hidden">
+        <div className="mb-4 filter-section">
           <h3 className="text-lg font-semibold mb-2">Filter Board Games</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <input 
@@ -118,11 +146,14 @@ export default function BoardGamesTab({ isAdmin, boardGames, fetchBoardGames, on
 
         {/* Replace virtualized grid with a simple grid */}
         {isLoading ? (
-          <div className="flex justify-center items-center h-64">
+          <div className="flex justify-center items-center h-32">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#942E2A]"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-auto" style={{ maxHeight: '800px' }}>
+          <div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-auto flex-grow" 
+            style={{ height: gridHeight, maxHeight: gridHeight }}
+          >
             {filteredBoardGames.map(game => (
               <div 
                 key={game.id}
