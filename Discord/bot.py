@@ -20,6 +20,7 @@ import json
 from datetime import datetime, timedelta
 import pytz
 import requests
+import re
 
 async def load_cogs(bot):
     cog_list = [
@@ -72,14 +73,11 @@ async def run_bot():
                     user_has_other_reaction = True
                     break
 
-        #Make the variables to grab the details of the game/event after the checks for valid reaction removal pass
+        #Grab the message's embed
         embed = message.embeds[0]
-        embedCopy = discord.Embed(title=embed.title,
-        description=embed.description,
-        color=discord.Color.green())
 
         #Determine if the reaction belongs to a game or event
-        gameEventtype = None
+        gameEventType = None
 
         if channel.id == GAMES_CHANNEL_ID:
             gameEventType = "game"
@@ -87,6 +85,59 @@ async def run_bot():
             #Going to be event, check previously ensure its only event or game
             gameEventType = "event"
 
+
+
+        #Holds the new embed for accurate count of attending
+        if gameEventType == "game":
+            # Bot & Bevy green
+            GAME_COLOR = discord.Color.from_rgb(87, 107, 30)   #576b1e
+            
+            with open("../Website/public/b&b_crest.png", "rb") as f:
+                crest_image = discord.File(f, filename="bb_crest.png")
+
+            embedCopy = discord.Embed(
+                title=f"**{embed.title}**",
+                description=f"{embed.description}",
+                color=GAME_COLOR,
+            )
+            
+            
+            embedCopy.set_author(
+                name="Bot & Bevy Game Session", 
+                icon_url="attachment://bb_crest.png"
+            )
+            
+
+            if embed.thumbnail.url:
+                embedCopy.set_thumbnail(url=embed.thumbnail.url)
+            else:
+                embedCopy.set_thumbnail(url="attachment://bb_crest.png")
+        else:
+            #It is an event
+            # Custom Bot & Bevy color - dark red that matches your website
+            BOT_AND_BEVY_COLOR = discord.Color.from_rgb(148, 46, 42)  # #942E2A
+            
+            with open("../Website/public/b&b_crest.png", "rb") as f:
+                crest_image = discord.File(f, filename="bb_crest.png")
+
+            # Create a more styled embed
+            embedCopy = discord.Embed(
+                title=f"**{embed.title}**",
+                description=f"{embed.description}",
+                color=BOT_AND_BEVY_COLOR,
+            )
+            
+            # Add an author field for context
+            embedCopy.set_author(
+                name="Bot & Bevy Event Announcement", 
+                icon_url="attachment://bb_crest.png"  # Your logo
+            )
+            
+            # Add image if available, otherwise use a default event image
+            if embed.thumbnail.url:
+                embedCopy.set_thumbnail(url=embed.thumbnail.url)
+            else:
+                embedCopy.set_thumbnail(url="attachment://bb_crest.png")
 
         if not user_has_other_reaction:
             #Now remove from the embed
@@ -196,9 +247,56 @@ async def run_bot():
         embed = message.embeds[0]
 
         #Holds the new embed for accurate count of attending
-        embedCopy = discord.Embed(title=embed.title,
-        description=embed.description,
-        color=discord.Color.green())
+        if gameEventType == "game":
+            # Bot & Bevy green
+            GAME_COLOR = discord.Color.from_rgb(87, 107, 30)   #576b1e
+            
+            with open("../Website/public/b&b_crest.png", "rb") as f:
+                crest_image = discord.File(f, filename="bb_crest.png")
+
+            embedCopy = discord.Embed(
+                title=f"**{embed.title}**",
+                description=f"{embed.description}",
+                color=GAME_COLOR,
+            )
+            
+            
+            embedCopy.set_author(
+                name="Bot & Bevy Game Session", 
+                icon_url="attachment://bb_crest.png"
+            )
+            
+
+            if embed.thumbnail.url:
+                embedCopy.set_thumbnail(url=embed.thumbnail.url)
+            else:
+                embedCopy.set_thumbnail(url="attachment://bb_crest.png")
+        else:
+            #It is an event
+            # Custom Bot & Bevy color - dark red that matches your website
+            BOT_AND_BEVY_COLOR = discord.Color.from_rgb(148, 46, 42)  # #942E2A
+            
+            with open("../Website/public/b&b_crest.png", "rb") as f:
+                crest_image = discord.File(f, filename="bb_crest.png")
+
+            # Create a more styled embed
+            embedCopy = discord.Embed(
+                title=f"**{embed.title}**",
+                description=f"{embed.description}",
+                color=BOT_AND_BEVY_COLOR,
+            )
+            
+            # Add an author field for context
+            embedCopy.set_author(
+                name="Bot & Bevy Event Announcement", 
+                icon_url="attachment://bb_crest.png"  # Your logo
+            )
+            
+            # Add image if available, otherwise use a default event image
+            if embed.thumbnail.url:
+                embedCopy.set_thumbnail(url=embed.thumbnail.url)
+            else:
+                embedCopy.set_thumbnail(url="attachment://bb_crest.png")
 
         #
         #   Handle reaction addition
@@ -249,9 +347,16 @@ async def run_bot():
 
             #Go through the fields and find the correct field of start time, players and number attending
             for field in embed.fields:
-              if field.name == "Start Time":
-                  startTime = field.value
-              elif field.name == "Players":
+              if field.name == "📆 Date & Time":
+                  #Parse the time string to grab the start time only!
+                  holderToParseFrom = field.value
+                  match = re.search(r"\*\*Start:\*\*\s*(.+?)\n", holderToParseFrom)
+                  if match:
+                        start_time = match.group(1)
+                        print("Start time:", start_time)
+
+                  startTime = match.group(1)
+              elif field.name == "👥 Players Needed":
                   maxPlayers = field.value
               elif field.name == "Number Attending":
                   numberAttending = field.value
@@ -430,36 +535,100 @@ async def handle_new_event(bot, message):
         print("Events channel not found!")
         return
 
+    # embed = discord.Embed(
+    #     title=data.get('title', 'No Title'),
+    #     description=data.get('description', ''),
+    #     color=discord.Color.blue()
+    # )
+
+    # #Format the times as EST 12hr for readability
+    # formattedStartTime = utcTo12hrEST(data.get('start_time', 'Unknown'))
+    # formattedEndTime = utcTo12hrEST(data.get('end_time', 'Unknown'))
+
+    start_time = data.get('start_time', 'TBA')
+    end_time = data.get('end_time', 'TBA')
+
+    # #Format the times as EST 12hr for readability
+
+    if start_time != 'TBA':
+        #There is a start time
+        start_time = utcTo12hrEST(start_time)
+    
+    if end_time != 'TBA':
+        #There is a end time
+        end_time = utcTo12hrEST(end_time)
+
+
+    # embed.add_field(name="Start Time", value=formattedStartTime, inline=False)
+    # embed.add_field(name="End Time", value=formattedEndTime, inline=False)
+    # embed.add_field(name="Price", value=data.get('price', 'Free'), inline=False)
+    
+    # if data.get('game'):
+    #     embed.add_field(name="Game", value=data.get('game'), inline=False)
+    # if data.get('participants'):
+    #     embed.add_field(name="Participants", value=data.get('participants'), inline=False)
+
+    # #Add in the number of people going, setting to 1 since the organizer will be going
+    # embed.add_field(name="Number of Players Going", value=1, inline=False)
+    
+    # #Add in the backend ID to the embed at the very end of the message
+    # embed.add_field(name="\u200b", value=(data.get('id', '')), inline=False)
+
+    # gamePosting = await channel.send(embed=embed)
+
+    # print(f'gamePosting type: {type(gamePosting)}')
+    # print(f'gamePosting: {gamePosting}')
+
+    # Custom Bot & Bevy color - dark red that matches your website
+    BOT_AND_BEVY_COLOR = discord.Color.from_rgb(148, 46, 42)  # #942E2A
+    
+    with open("../Website/public/b&b_crest.png", "rb") as f:
+        crest_image = discord.File(f, filename="bb_crest.png")
+
+    # Create a more styled embed
     embed = discord.Embed(
-        title=data.get('title', 'No Title'),
-        description=data.get('description', ''),
-        color=discord.Color.blue()
+        title=f"📅 **{data.get('title', 'New Event')}**",
+        description=f"{data.get('description', 'Join us for this exciting event!')}",
+        color=BOT_AND_BEVY_COLOR,
     )
+    
+    # Add an author field for context
+    embed.set_author(
+        name="Bot & Bevy Event Announcement", 
+        icon_url="attachment://bb_crest.png"  # Your logo
+    )
+    
+    # Add image if available, otherwise use a default event image
+    if data.get('image'):
+        embed.set_thumbnail(url=data.get('image'))
+    else:
+        embed.set_thumbnail(url="attachment://bb_crest.png")
+    
+    # Format date and time for better readability
+    start_time = data.get('start_time', 'TBA')
+    end_time = data.get('end_time', 'TBA')
 
-    #Format the times as EST 12hr for readability
-    formattedStartTime = utcTo12hrEST(data.get('start_time', 'Unknown'))
-    formattedEndTime = utcTo12hrEST(data.get('end_time', 'Unknown'))
-
-
-    embed.add_field(name="Start Time", value=formattedStartTime, inline=False)
-    embed.add_field(name="End Time", value=formattedEndTime, inline=False)
-    embed.add_field(name="Price", value=data.get('price', 'Free'), inline=False)
+    # Add fields with improved formatting (some inline, some not)
+    embed.add_field(name="📆 Date & Time", value=f"**Start:** {start_time}\n**End:** {end_time}", inline=False)
+    embed.add_field(name="💰 Price", value=data.get('price', 'Free'), inline=True)
     
     if data.get('game'):
-        embed.add_field(name="Game", value=data.get('game'), inline=False)
+        embed.add_field(name="🎲 Game", value=data.get('game'), inline=True)
     if data.get('participants'):
-        embed.add_field(name="Participants", value=data.get('participants'), inline=False)
+        embed.add_field(name="👥 Participants", value=data.get('participants'), inline=False)
+    
+    # Set timestamp for the event (if you can parse the date string)
+    # This would show the time in each user's local timezone
+    # embed.timestamp = datetime.datetime.strptime(start_time, '%Y-%m-%d %I:%M %p')
 
     #Add in the number of people going, setting to 1 since the organizer will be going
     embed.add_field(name="Number of Players Going", value=1, inline=False)
-    
+
     #Add in the backend ID to the embed at the very end of the message
     embed.add_field(name="\u200b", value=(data.get('id', '')), inline=False)
+    
+    gamePosting = await channel.send(file=crest_image, embed=embed)
 
-    gamePosting = await channel.send(embed=embed)
-
-    print(f'gamePosting type: {type(gamePosting)}')
-    print(f'gamePosting: {gamePosting}')
 
     #Now add the interactions to the message
     await gamePosting.add_reaction("👍")
@@ -475,7 +644,7 @@ async def handle_new_event(bot, message):
     currentTime = (datetime.now(pytz.timezone("US/Eastern"))).astimezone(pytz.utc)
 
     #Grab end time of the game from EST 12 hour to UTC 24 hour
-    endTime = est12hrTo24hrUTC(formattedEndTime)
+    endTime = est12hrTo24hrUTC(endTime)
 
     #Convert the end time into a datetime object
     endTime = datetime.fromisoformat(endTime)
@@ -525,36 +694,92 @@ async def handle_new_game(bot, message):
         print("Games channel not found!")
         return
 
-    embed = discord.Embed(
-        title=data.get('title', 'No Title'),
-        description=data.get('description', ''),
-        color=discord.Color.green()
-    )
+    # embed = discord.Embed(
+    #     title=data.get('title', 'No Title'),
+    #     description=data.get('description', ''),
+    #     color=discord.Color.green()
+    # )
 
-    #Format the times as EST 12hr for readability
-    formattedStartTime = utcTo12hrEST(data.get('start_time', 'Unknown'))
-    formattedEndTime = utcTo12hrEST(data.get('end_time', 'Unknown'))
+    start_time = data.get('start_time', 'TBA')
+    end_time = data.get('end_time', 'TBA')
 
+    # #Format the times as EST 12hr for readability
 
-    embed.add_field(name="Organizer", value=data.get('organizer', 'Unknown'), inline=False)
-    embed.add_field(name="Start Time", value=formattedStartTime, inline=False)
-    embed.add_field(name="End Time", value=formattedEndTime, inline=False)
-    embed.add_field(name="Players", value=data.get('players', 'N/A'), inline=False)
+    if start_time != 'TBA':
+        #There is a start time
+        start_time = utcTo12hrEST(start_time)
     
+    if end_time != 'TBA':
+        #There is a end time
+        end_time = utcTo12hrEST(end_time)
+
+
+    # embed.add_field(name="Organizer", value=data.get('organizer', 'Unknown'), inline=False)
+    # embed.add_field(name="Start Time", value=formattedStartTime, inline=False)
+    # embed.add_field(name="End Time", value=formattedEndTime, inline=False)
+    # embed.add_field(name="Players", value=data.get('players', 'N/A'), inline=False)
+    
+    
+    # if data.get('participants'):
+    #     embed.add_field(name="Participants", value=data.get('participants'), inline=False)
+    # if data.get('catalogue'):
+    #     embed.add_field(name="Catalogue", value=data.get('catalogue'), inline=False)
+
+    # #Add in the number of people going, setting to 1 since the organizer will be going
+    # embed.add_field(name="Number Attending", value=1, inline=False)
+
+    # #Add in the backend ID to the embed at the very end of the message
+    # embed.add_field(name="\u200b", value=(data.get('id', '')), inline=False)
+    
+    # gamePosting = await channel.send(embed=embed)
+    
+    # Bot & Bevy green
+    GAME_COLOR = discord.Color.from_rgb(87, 107, 30)   #576b1e
+    
+    with open("../Website/public/b&b_crest.png", "rb") as f:
+        crest_image = discord.File(f, filename="bb_crest.png")
+
+    embed = discord.Embed(
+        title=f"🎲 **{data.get('title', 'Game Session')}**",
+        description=f"{data.get('description', 'Join us for this game session!')}",
+        color=GAME_COLOR,
+    )
+    
+    
+    embed.set_author(
+        name="Bot & Bevy Game Session", 
+        icon_url="attachment://bb_crest.png"
+    )
+    
+
+    if data.get('image'):
+        embed.set_thumbnail(url=data.get('image'))
+    else:
+        embed.set_thumbnail(url="attachment://bb_crest.png")
+    
+    # Format date and time for better readability
+    
+
+    # added fields with improved formatting 
+    embed.add_field(name="📆 Date & Time", value=f"**Start:** {start_time}\n**End:** {end_time}", inline=False)
+    embed.add_field(name="👤 Organizer", value=data.get('organizer', 'Bot & Bevy Staff'), inline=True)
+    
+    if data.get('players'):
+        embed.add_field(name="👥 Players Needed", value=data.get('players', 'N/A'), inline=True)
     
     if data.get('participants'):
-        embed.add_field(name="Participants", value=data.get('participants'), inline=False)
+        embed.add_field(name="🧩 Current Players", value=data.get('participants'), inline=False)
+    
     if data.get('catalogue'):
-        embed.add_field(name="Catalogue", value=data.get('catalogue'), inline=False)
+        embed.add_field(name="📚 Game Type", value=data.get('catalogue'), inline=True)
 
     #Add in the number of people going, setting to 1 since the organizer will be going
     embed.add_field(name="Number Attending", value=1, inline=False)
 
     #Add in the backend ID to the embed at the very end of the message
     embed.add_field(name="\u200b", value=(data.get('id', '')), inline=False)
-    
-    gamePosting = await channel.send(embed=embed)
-    
+
+    gamePosting = await channel.send(file=crest_image, embed=embed)
 
 
 
@@ -584,7 +809,7 @@ async def handle_new_game(bot, message):
     currentTime = (datetime.now(pytz.timezone("US/Eastern"))).astimezone(pytz.utc)
 
     #Grab end time of the game from EST 12 hour to UTC 24 hour
-    endTime = est12hrTo24hrUTC(formattedEndTime)
+    endTime = est12hrTo24hrUTC(endTime)
 
     #Convert the end time into a datetime object
     endTime = datetime.fromisoformat(endTime)
