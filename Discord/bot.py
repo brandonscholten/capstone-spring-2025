@@ -19,6 +19,7 @@ import redis
 import json
 from datetime import datetime, timedelta
 import pytz
+import requests
 
 async def load_cogs(bot):
     cog_list = [
@@ -39,6 +40,102 @@ async def run_bot():
 
     bot = commands.Bot(command_prefix="/", intents=intents)
 
+    #Ad the RSVP reaction removal of 👍 only!
+    #Fires EVERY time a 👍 is removed
+    @bot.event
+    async def on_reaction_remove(reaction, user):
+        #Ensures the bot's reaction removal does not activate this
+        if user.bot:
+            return
+        
+        #Grabs the channel ID from the env file to ensure proper channel for reaction handling
+        GAMES_CHANNEL_ID = int(os.getenv("GAMES_CHANNEL_ID"))
+        EVENTS_CHANNEL_ID = int(os.getenv("EVENTS_CHANNEL_ID"))
+
+        message = reaction.message
+        channel = message.channel
+
+        #Ensures only Game and Event channel reaction removals are handled
+        if channel.id not in {GAMES_CHANNEL_ID, EVENTS_CHANNEL_ID} :
+            return
+        
+        #Ensures the removal emoji is a 👍
+        if str(reaction.emoji) != '👍':
+            return
+
+        #Now cycle through and see if the user has NO reaction left (no toggle, just removal of 👍)
+        user_has_other_reaction = False
+        for react in message.reactions:
+            if react.emoji != '👍':
+                users = [u async for u in react.users()]
+                if user in users:
+                    user_has_other_reaction = True
+                    break
+
+        #Make the variables to grab the details of the game/event after the checks for valid reaction removal pass
+        embed = message.embeds[0]
+        embedCopy = discord.Embed(title=embed.title,
+        description=embed.description,
+        color=discord.Color.green())
+
+        #Determine if the reaction belongs to a game or event
+        gameEventtype = None
+
+        if channel.id == GAMES_CHANNEL_ID:
+            gameEventType = "game"
+        else:
+            #Going to be event, check previously ensure its only event or game
+            gameEventType = "event"
+
+
+        if not user_has_other_reaction:
+            #Now remove from the embed
+            #Hold the current number attending
+            numberAttending = None
+
+            #Go through the fields and find the correct field of start time, players and number attending
+            for field in embed.fields:
+              if field.name == "Number Attending":
+                numberAttending = field.value
+
+
+            #Call this function to handle the removal of the RSVP to a game in terms of message player going field
+            # in embedded message
+            #Only call if the type is game
+            if gameEventType == 'game':
+                await removeRSVPToGame(numberAttending, reaction, message, embed, embedCopy, True)
+
+
+            #Unschedule the reminder
+
+
+            #Get the game id and hold it, this will be for the JSON and posting to the backend
+            gameID = None
+
+
+            for field in embed.fields:
+                print(f"{field}: {field.value}")
+                if field.name == "\u200b":
+                    print("Found the hidden field")
+                    gameID = field.value
+                    break
+
+            print(f"gameID: {gameID}")
+
+            #Make the JSON
+            participantRemoveJSON = {
+                "type": gameEventType,
+                "participant": str(user.id),
+                "id": gameID
+            }
+
+            print(f"participantRemoveJSON: {participantRemoveJSON}")
+
+            #Make the API call to add to the RSVP
+            response = requests.post("http://127.0.0.1:5000/participants/remove", json=participantRemoveJSON)
+
+            print(f"REMOVAL: {response.json()}")
+
     #Add the RSVP reaction event
     #Making this a bot.event ensures this can fire EVERY time a reaction is added 
     @bot.event
@@ -52,6 +149,13 @@ async def run_bot():
         #Ensures this only fires for the specific channels and messages
         message = reaction.message
         channel = message.channel
+        
+
+        #Keeps a track of game or event type to ensure the proper API endpoint is called
+        gameEventtype = None
+
+        #Will only allow for a decrement of the number of players RSVPed if they RSVPd before
+        previouslyRSVPd = False
 
         #Grabs the channel ID from the env file to ensure proper channel for reaction handling
         GAMES_CHANNEL_ID = int(os.getenv("GAMES_CHANNEL_ID"))
@@ -61,16 +165,40 @@ async def run_bot():
             #Reaction was not in the games channel, so dont do anything
             return
         
+        print(f"channel.id: {channel.id}")
+
+        #Flag for the participant JSON
+        if channel.id == GAMES_CHANNEL_ID :
+            gameEventType = "game"
+        elif channel.id == EVENTS_CHANNEL_ID:
+            gameEventType = "event"
+        
         #Now iterate through the reactions and remove only the
         #user that changed their RVSP status (reaction)
         for reactions in message.reactions:
             #Check if the new reaction (parameter) is not equal=
             #to the reaction found, remove it
             if reactions.emoji != reaction.emoji:
+                #Update the flag specifically for going from 👍 to 👎
+                if str(reaction.emoji) == '👎' and str(reactions.emoji) == '👍':
+                    users = [u async for u in reactions.users()]
+                    
+                    if user in users:
+                        previouslyRSVPd = True  # User changed from 👍 to 👎
+
                 #Remove it
                 users = [u async for u in reactions.users()]
                 if user in users:
                     await reactions.remove(user)
+
+
+        #Grabs the embed message
+        embed = message.embeds[0]
+
+        #Holds the new embed for accurate count of attending
+        embedCopy = discord.Embed(title=embed.title,
+        description=embed.description,
+        color=discord.Color.green())
 
         #
         #   Handle reaction addition
@@ -80,11 +208,28 @@ async def run_bot():
 
             #Check for any other reaction and remove it (👎)
             
-##################################################################################################
             
+            #Get the game id and hold it, this will be for the JSON and posting to the backend
+            gameEventID = None
+
+            for field in embed.fields:
+                print(f"{field}: {field.value}")
+                if field.name == "\u200b":
+                    print("Found the hidden field")
+                    gameID = field.value
+                    break
+
+            print(f"gameID: {gameID}")
+
             #Make the JSON
+            participantAddJSON = {
+                "type": gameEventType,
+                "participant": user.id,
+                "id": gameID
+            }
 
             #Make the API call to add to the RSVP
+            response = requests.post("http://127.0.0.1:5000/participants/add", json=participantAddJSON)
 
             #
             # Schedule the reminder!
@@ -93,22 +238,35 @@ async def run_bot():
             #Grab the event time from message
             #
 
-            #Grab the embedded message
-            embeddedMessage = message.embeds[0]
-
             #Make a default value for the startTime
             startTime = None
 
-            #Go through the fields and find the correct field of start time
-            for field in embeddedMessage.fields:
+            #Hold the max players
+            maxPlayers = None
+
+            #Hold the current number attending
+            numberAttending = None
+
+            #Go through the fields and find the correct field of start time, players and number attending
+            for field in embed.fields:
               if field.name == "Start Time":
                   startTime = field.value
-                  break
+              elif field.name == "Players":
+                  maxPlayers = field.value
+              elif field.name == "Number Attending":
+                  numberAttending = field.value
 
-            
-            
+
+            #Make the call to the new player calculation,
+            #This is used more than once and makes the code easier
+            #To debug and reuse
+            #Only do this if the type is game
+            if gameEventType == 'game':
+                await rsvpToGame(numberAttending, maxPlayers, reaction, message, user, embed, embedCopy)
+
             # Convert the start time from 12hr EST to 24hr UTC
             startTime = est12hrTo24hrUTC(startTime)
+
 
 
             # Convert the startTime into a datetime object
@@ -128,35 +286,82 @@ async def run_bot():
             print(f"delay: {delay}")
 
             
-            async def send_dm_reminder():
+            async def send_dm_reminder(message):
                   await asyncio.sleep(delay)
-                  print(f'message content: {message.content}')
-                  await user.send("Your game is starting soon!", embed=message.embeds[0])
+
+                  #Now check if the user is in the list of 👍reactions
+                  thumbsUp = False
+
+                  for reaction in message.reactions:
+                    if str(reaction.emoji) == reaction_emoji:  # Check for 👍 emoji
+                        # Check if the user is in the list of users who reacted with 👍
+                        users_who_reacted = await reaction.users().flatten()  # Get a list of users who reacted
+                        if user in users_who_reacted:
+                            thumbsUp = True
+                            break
+
+                  #Check and see if the uses still has a 👍 when time to remind, if not, then dont send it
+                  if thumbsUp:         
+                    print(f'message content: {message.content}')
+                    await user.send("Your game is starting soon!", embed=message.embeds[0])
 
             if delay > 0:
-                task = bot.loop.create_task(send_dm_reminder())  # ✅ This is the scheduling
+                task = bot.loop.create_task(send_dm_reminder(message))
                 # scheduled_reminders[(user.id, message.id)] = task  # Store task to cancel later
             elif delay < 0:
                 #Send an immediate reminder
                 await user.send(f"Your game starts in under an hour", embed=message.embeds[0])
 
-            # ^^ CODE ABOVE THIS POINT WORKING ^^
-
-
-####################################################################################################
-
         elif str(reaction.emoji) == '👎':
             print("Not RSVping, or removing RSVP for the event")
 
-            #Check if a previous 👍 was put in, if so switch it to a 👎
+
+            #Now remove from the embed
+            #Hold the current number attending
+            numberAttending = None
+
+            #Go through the fields and find the correct field of start time, players and number attending
+            for field in embed.fields:
+              if field.name == "Number Attending":
+                numberAttending = field.value
+
+
+            #Call this function to handle the removal of the RSVP to a game in terms of message player going field
+            # in embedded message
+            #Only call if the type is game
+            if gameEventType == 'game':
+                await removeRSVPToGame(numberAttending, reaction, message, embed, embedCopy, previouslyRSVPd)
+
 
             #Unschedule the reminder
 
 
+            #Get the game id and hold it, this will be for the JSON and posting to the backend
+            gameID = None
+
+
+            for field in embed.fields:
+                print(f"{field}: {field.value}")
+                if field.name == "\u200b":
+                    print("Found the hidden field")
+                    gameID = field.value
+                    break
+
+            print(f"gameID: {gameID}")
+
             #Make the JSON
+            participantRemoveJSON = {
+                "type": gameEventType,
+                "participant": str(user.id),
+                "id": gameID
+            }
 
-            #Make the API call to remove the RSVP
+            print(f"participantRemoveJSON: {participantRemoveJSON}")
 
+            #Make the API call to add to the RSVP
+            response = requests.post("http://127.0.0.1:5000/participants/remove", json=participantRemoveJSON)
+
+            print(f"REMOVAL: {response.json()}")
 
     # When the bot is ready, sync commands and start the Redis listener
     @bot.event
@@ -202,6 +407,8 @@ async def handle_new_game_with_room(bot, message):
             payload["privateRoomRequest"],
             payload['password'] if 'password' in payload else None,
         )
+
+
 async def handle_new_event(bot, message):
     """
     Processes a Redis message from the 'new_event' channel, formats the event data
@@ -242,7 +449,13 @@ async def handle_new_event(bot, message):
         embed.add_field(name="Game", value=data.get('game'), inline=False)
     if data.get('participants'):
         embed.add_field(name="Participants", value=data.get('participants'), inline=False)
+
+    #Add in the number of people going, setting to 1 since the organizer will be going
+    embed.add_field(name="Number of Players Going", value=1, inline=False)
     
+    #Add in the backend ID to the embed at the very end of the message
+    embed.add_field(name="\u200b", value=(data.get('id', '')), inline=False)
+
     gamePosting = await channel.send(embed=embed)
 
     print(f'gamePosting type: {type(gamePosting)}')
@@ -253,6 +466,44 @@ async def handle_new_event(bot, message):
     await gamePosting.add_reaction("👎")
 
 
+    # Need to calculate the number of seconds between the schedule date
+    # and the end date and time for deletion
+
+    #Grab the current time and localize it for EST and bring it to UTC
+    #The 4 or 5 hour offset is already baked into the hours of UTC
+    # Grab the current time to help get the seconds until the start of the 
+    currentTime = (datetime.now(pytz.timezone("US/Eastern"))).astimezone(pytz.utc)
+
+    #Grab end time of the game from EST 12 hour to UTC 24 hour
+    endTime = est12hrTo24hrUTC(formattedEndTime)
+
+    #Convert the end time into a datetime object
+    endTime = datetime.fromisoformat(endTime)
+
+
+    #Subtract the two to get the delta seconds left
+    deleteTimeDifference = (endTime - currentTime).total_seconds()
+
+    print(f"deleteTimeDifference: {deleteTimeDifference}")
+
+
+    deleteJSON = {
+        'id': data.get('id', '')
+    }
+
+    async def delete_ended_game():
+        await asyncio.sleep(deleteTimeDifference)
+        try:
+            await gamePosting.delete()
+            requests.delete("http://127.0.0.1:5000/games", json=deleteJSON)
+        except:
+            print("")
+            #Not found, do nothing
+
+    #Now schedule the deletion
+    bot.loop.create_task(delete_ended_game())
+
+
 
 
 async def handle_new_game(bot, message):
@@ -260,6 +511,7 @@ async def handle_new_game(bot, message):
     Processes a Redis message from the 'new_game' channel, formats the game data
     into an embed, and sends it to the Discord games channel.
     """
+    print("Calling handle_new_game")
     try:
         data = json.loads(message['data'].decode('utf-8'))
     except Exception as e:
@@ -289,10 +541,17 @@ async def handle_new_game(bot, message):
     embed.add_field(name="End Time", value=formattedEndTime, inline=False)
     embed.add_field(name="Players", value=data.get('players', 'N/A'), inline=False)
     
+    
     if data.get('participants'):
         embed.add_field(name="Participants", value=data.get('participants'), inline=False)
     if data.get('catalogue'):
         embed.add_field(name="Catalogue", value=data.get('catalogue'), inline=False)
+
+    #Add in the number of people going, setting to 1 since the organizer will be going
+    embed.add_field(name="Number Attending", value=1, inline=False)
+
+    #Add in the backend ID to the embed at the very end of the message
+    embed.add_field(name="\u200b", value=(data.get('id', '')), inline=False)
     
     gamePosting = await channel.send(embed=embed)
     
@@ -328,13 +587,31 @@ async def handle_new_game(bot, message):
     endTime = est12hrTo24hrUTC(formattedEndTime)
 
     #Convert the end time into a datetime object
-    endTime = datetime.isoformat(endTime)
+    endTime = datetime.fromisoformat(endTime)
 
 
     #Subtract the two to get the delta seconds left
-    deleteTimeDifference = currentTime - endTime
+    deleteTimeDifference = (endTime - currentTime).total_seconds()
 
     print(f"deleteTimeDifference: {deleteTimeDifference}")
+
+
+    deleteJSON = {
+        'id': data.get('id', '')
+    }
+
+    async def delete_ended_game():
+        await asyncio.sleep(deleteTimeDifference)
+        try:
+            await gamePosting.delete()
+            requests.delete("http://127.0.0.1:5000/games", json=deleteJSON)
+        except:
+            print("")
+            #Not found, do nothing
+
+    #Now schedule the deletion
+    bot.loop.create_task(delete_ended_game())
+
 
     
 
@@ -396,6 +673,107 @@ def est12hrTo24hrUTC(estString):
 
     #4.) Return the string of the UTC format
     return utcTimeObject.isoformat()
+
+
+async def rsvpToGame(currentAttendingString, maxPlayersString, reaction, message, user, embed, embedCopy):
+    #Will convert the string over to a int and return
+    #Used for the attending max comparison
+    
+    #Convert the two
+    maxPlayersInt = int(maxPlayersString)
+    numberAttendingInt = int(currentAttendingString)
+
+
+    #Converstion of maxPlayersString into an int
+    print(f"rsvpToGame, int(maxPlayersString): should be {maxPlayersString}(type: {type(maxPlayersString)}), but is {maxPlayersInt} (type: {type(maxPlayersInt)})")
+    print(f"rsvpToGame, int(currentAttending): should be {currentAttendingString}(type: {type(currentAttendingString)}), but is {numberAttendingInt} (type: {type(numberAttendingInt)})")
+
+
+    if str(reaction.emoji) == '👍':#Now check if there is enough slots left to join
+            if maxPlayersInt < (numberAttendingInt + 1):
+                print(f"rsvpToGame, maxPlayersInt < (numberAttendingInt + 1): {maxPlayersInt} < {numberAttendingInt + 1}")
+
+                #the max players has already been hit, dont RSVP
+                #Remove the 👍 reaction
+                await message.remove_reaction('👍', user)
+
+                #Now send an ephemeral message saying the game they RSVPd to is full
+                #await reaction.response.send_message(content="Can not RSVP to the following game, it is already full", embed=embed, ephemeral=True)
+
+                #Now send an dm saying the game they RSVPd to is full
+                await user.send(content="Can not RSVP to the following game, it is already full", embed=embed);
+
+                #Return on this function as it is done
+                return
+            else:
+
+                #The player can be accommodated, now add 1 to the attending field
+                numberAttendingInt = numberAttendingInt + 1
+                print(f"rsvpToGame: numberAttendingInt = numberAttendingInt + 1 : {numberAttendingInt}")
+
+
+                #Iterate through the copy and modify the Number Attending field with new value
+                #The embed copy was declared above
+                for field in embed.fields:
+                    print(f"{field.name}: {field.value}")
+                    if field.name == "Number Attending":
+                        embedCopy.add_field(name=field.name, value=numberAttendingInt, inline=field.inline)
+                    else:
+                        embedCopy.add_field(name=field.name, value=field.value, inline=field.inline)
+
+                print("-----embedCopy----")
+                for field in embedCopy.fields:
+                    print(f"{field.name}: {field.value}")
+
+                #Now update the message with the new embed
+                await message.edit(embed=embedCopy)
+
+
+async def removeRSVPToGame(numberAttendingSting, reaction, message, embed, embedCopy, wasRSVPd):
+    print(f"removeRSVPToGame, wasRSVPD: {wasRSVPd}")
+
+    #Inital check to ensure there was a previous RSVP to then decrement off the going counter
+    if not wasRSVPd:
+        return
+
+
+    #Convert the two
+    numberAttendingInt = int(numberAttendingSting)
+
+
+    #Conversion of maxPlayersString into an int
+    
+    print(f"removeRSVPToGame, int(numberAttendingSting): should be {numberAttendingSting}(type: {type(numberAttendingSting)}), but is {numberAttendingInt} (type: {type(numberAttendingInt)})")
+
+    #The player can be accommodated, now subtract 1 to the attending field, don't go lower than 1,
+    if (numberAttendingInt - 1) >= 1:
+        print(f"removeRSVPToGame, (numberAttendingInt - 1) >= 1: {numberAttendingInt - 1} >= 1")
+
+        #No need to ensure the value is min 1, the check has happened
+        numberAttendingInt = numberAttendingInt - 1
+        print(f"removeRSVPToGame, numberAttendingInt - 1: {numberAttendingInt} ")
+    elif (numberAttendingInt - 1) < 1:
+        print(f"removeRSVPToGame, (numberAttendingInt - 1) < 1: {numberAttendingInt - 1} < 1")
+        
+
+        #Host has to be rsvp'd, also should catch the failed conversion
+        numberAttendingInt = 1
+
+    #Iterate through the copy and modify the Number Attending field with new value
+    for field in embed.fields:
+        print(f"{field.name}: {field.value}")
+        if field.name == "Number Attending":
+            embedCopy.add_field(name=field.name, value=numberAttendingInt, inline=field.inline)
+        else:
+            embedCopy.add_field(name=field.name, value=field.value, inline=field.inline)
+
+
+    #Now update the message with the new embed
+    await message.edit(embed=embedCopy)
+
+
+    
+
     
 
 def main():

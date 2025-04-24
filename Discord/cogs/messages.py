@@ -51,7 +51,6 @@ class Messages(commands.Cog):
         # Call API to get the game catalogue
         response = requests.get("http://127.0.0.1:5000/catalogue")
         games = response.json()
-        print(games)
         
         # Helper function: Check if a number matches a range string (e.g., "2-6")
         def check_range_match(value: str, filter_val: str) -> bool:
@@ -212,10 +211,6 @@ class Messages(commands.Cog):
             return True
                 
 
-        #print(event_time)
-
-        #await interaction.response.pong()
-        
 
         #Send a message to create a thread on (have to without the server being Nitro boosted)
         threadStarter = (await interaction.response.send_message("Creating a thread to schedule, please open the thread to continue (The thread will be deleted after)")).resource
@@ -234,7 +229,6 @@ class Messages(commands.Cog):
         #
         #Ask for the name of the event if it was not filled out in the command
         #
-        print(game_name)
         if game_name == None:
             def gameNameCollectionCheck(message):
                 return message.author == usersObject and message.channel == thread
@@ -246,7 +240,6 @@ class Messages(commands.Cog):
             try:
                 gameNameResponse = await self.bot.wait_for('message', timeout=60, check=gameNameCollectionCheck)
                 game_name = gameNameResponse.content
-                print("Collected the game name!")
             except TimeoutError:
                 thread.send("Timeout reached, please try creating an game again")
 
@@ -264,8 +257,6 @@ class Messages(commands.Cog):
         #Make a while loop to ensure the proper type
         while True:
             if game_max_players == None:
-                #No players were given as input
-                print(type(game_max_players))
 
                 #Now prompt the user for the max number of players
                 #Prompt for the name
@@ -274,16 +265,12 @@ class Messages(commands.Cog):
                 #Now try and wait for the user to respond in 60 seconds, if nothing, then error out
                 try:
                     maxNumberOfPlayers = await self.bot.wait_for('message', timeout=60, check=maxPlayersCheck)
-                    print(maxNumberOfPlayers.content)
                     game_max_players = maxNumberOfPlayers.content
-                    #print("Collected the game name!")
                 except TimeoutError:
                     await thread.send("Timeout reached, please try creating an game again")
             else:
                 #Number was provided through the command arguments, so take its contents and assign it
-                print(type(game_max_players))
                 game_max_players = game_max_players
-                print(game_max_players)
 
             #Now check if it can be casted as an int
             if validPlayerInteger(game_max_players):
@@ -306,7 +293,6 @@ class Messages(commands.Cog):
             try:
                 gameDescriptionResponse = await self.bot.wait_for('message', timeout=60, check=gameDescriptionCheck)
                 game_description = gameDescriptionResponse.content
-                print("Collected the game name!")
             except TimeoutError:
                 thread.send("Timeout reached, please try creating an game again")
 
@@ -324,10 +310,7 @@ class Messages(commands.Cog):
             #This will run the checker only if the date was already provided
             if game_date != None:
                 game_date = game_date
-                game_date_valid = (game_date)
-                print("date provided")
             else:
-                print("NO date provided")
 
                 #Now ask for the date since there is none there
                 await thread.send("Please enter your games date (format: Today at 6PM, March 13, 2026 at 5:30PM, 6PM [Note: This will do the current day!])")
@@ -338,7 +321,6 @@ class Messages(commands.Cog):
 
                     #Now set the date to what was received from the user
                     game_date = response.content
-                    print(game_date)
                 except TimeoutError:
                     print("Timeout")
 
@@ -363,9 +345,7 @@ class Messages(commands.Cog):
             #This will run the checker only if the date was already provided
             if game_end_time != None:
                 game_end_time = game_end_time
-                print("time provided")
             else:
-                print("NO time provided")
 
                 #Now ask for the date since there is none there
                 await thread.send("Please send the end time for the game (format: March 13th, 2026 at 6PM, Today at 9PM, 9PM [This will be for the current day at 9PM])")
@@ -441,7 +421,6 @@ class Messages(commands.Cog):
             try:
                 firstLastNameResponse = await self.bot.wait_for('message', timeout=60, check=firstLastNameCheck)
                 firstLastName = firstLastNameResponse.content
-                print("Collected First and Last name")
             except TimeoutError:
                 thread.send("Timeout reached, please try creating an game again")
 
@@ -513,7 +492,6 @@ class Messages(commands.Cog):
                 try:
                     firstLastNameResponse = await self.bot.wait_for('message', timeout=60, check=firstLastNameCheck)
                     firstLastName = firstLastNameResponse.content
-                    print("Collected First and Last name")
                 except TimeoutError:
                     thread.send("Timeout reached, please try creating an game again")
 
@@ -616,14 +594,11 @@ async def sendApprovalMessageToAdminChannel(bot, email, usersDiscordID, usersNam
     await gameApprovalMessage.add_reaction('👎')
 
     def gameApprovalCheck(reaction, channel):
-        print("doing the check!")
-        print(f'Channel: {channel}')
         return reaction.message.id == gameApprovalMessage.id
 
     try:
         reaction, channel = await bot.wait_for('reaction_add', check=gameApprovalCheck)
         if str(reaction.emoji) == '👍':
-            print("Thumbs up!!!")
 
             gameApproved = True
             calendar = {
@@ -750,7 +725,6 @@ async def deny_request(bot, gameApprovalMessage, usersDiscordID, email):
     try:
         denyMessageReasonReaction, user = await bot.wait_for("reaction_add")
 
-        print(denyMessageReasonReaction.emoji)
 
         if str(denyMessageReasonReaction.emoji) == '👍':
         #Collect the reason
@@ -761,7 +735,6 @@ async def deny_request(bot, gameApprovalMessage, usersDiscordID, email):
                     return message.author == user and message.channel == gameApprovalMessage.channel
                                 
                 denyMessageReason = await bot.wait_for('message', timeout=60, check=denyMessageResponseCheck)
-                print(f'Deny message reason in try: {denyMessageReason}')
             except TimeoutError:
                 #  print("hello world")
                 #  thread.send("Timeout reached, sending rejection with no reason")
@@ -769,7 +742,6 @@ async def deny_request(bot, gameApprovalMessage, usersDiscordID, email):
             except Exception as e:
                 print(f'DENIAL MESSAGE ERROR: {e}')       
                 
-            print(denyMessageReason)
 
     #Now print a follow-up message, asking for an optional reason
 
@@ -781,7 +753,6 @@ async def deny_request(bot, gameApprovalMessage, usersDiscordID, email):
                 
         #Run a check here to sed if an email message or a discord DM is sent to
         #the user to notify them of their denied game
-        print(email)
         if email == None:
             #The DM command is here
             await DMDiscordServerMember(bot, usersDiscordID, denialMessage)
