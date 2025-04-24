@@ -134,15 +134,17 @@ export default function RSVPModal({ isOpen, onClose, eventData, type, refresh}) 
                   placeholder="example@example.com or Discord#1234"
                 />
               </div>
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  className="bg-[#942E2A] text-white px-4 py-2 rounded disabled:opacity-50"
-                  disabled={!name.trim()}
-                >
-                  Next
-                </button>
-              </div>
+			  <div className="flex justify-end">
+				<button
+					type="submit"
+					className="bg-[#942E2A] text-white px-4 py-2 rounded hover:scale-105 transition-all group relative disabled:opacity-50"
+					disabled={!name.trim()}
+				>
+					<span className="relative z-10">Next</span>
+					<span className="absolute inset-0 bg-[#942E2A] rounded"></span>
+					<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded"></span>
+				</button>
+				</div>
             </div>
           )}
 

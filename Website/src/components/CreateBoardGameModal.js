@@ -257,20 +257,22 @@ export default function CreateBoardGameModal({ setIsModalOpen, onAddBoardGame, f
             />
           </div>
           <div className="flex justify-end">
-            <button 
-              type="button" 
-              onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 mr-2 border rounded"
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              className="px-4 py-2 bg-[#942E2A] text-white rounded"
-            >
-              Add Board Game
-            </button>
-          </div>
+			<button 
+				type="button" 
+				onClick={() => setIsModalOpen(false)}
+				className="px-4 py-2 mr-2 border rounded"
+			>
+				Cancel
+			</button>
+			<button 
+				type="submit" 
+				className="px-4 py-2 bg-[#942E2A] text-white rounded hover:scale-105 transition-all group relative"
+			>
+				<span className="relative z-10">Add Board Game</span>
+				<span className="absolute inset-0 bg-[#942E2A] rounded"></span>
+				<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded"></span>
+			</button>
+			</div>
         </form>
       </div>
     </div>

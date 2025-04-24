@@ -3,8 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
 import requests
-import bcrypt
-from datetime import datetime, timedelta
+import bcrypt, uuid
+from datetime import datetime, timedelta, timezone
 import redis
 import json
 from dotenv import load_dotenv
@@ -16,6 +16,7 @@ import os
 from dotenv import load_dotenv, dotenv_values
 from PIL import Image
 import io
+import boto3
 #Loads the env file
 load_dotenv()
 
@@ -36,6 +37,10 @@ credentials = service_account.Credentials.from_service_account_file(
 service = build('calendar', 'v3', credentials=credentials)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")  # or your preferred region
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")  # Must be verified in SES
+ses_client = boto3.client("ses", region_name=AWS_REGION)
 
 #############################################
 #               MODELS                      #
@@ -107,6 +112,16 @@ class Game(db.Model):
     # Link to a catalogue game (optional)
     catalogue_id = db.Column(db.Integer, db.ForeignKey('catalogue.id'), nullable=True)
     catalogue = db.relationship('Catalogue', backref=db.backref('games', lazy=True))
+
+# Admin user(s)
+class Admins(db.Model):
+    __tablename__ = 'admins'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(255), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    session_token = db.Column(db.String(1000), nullable=True)
+    session_exp = db.Column(db.String(255), nullable=True)
+
 
 #############################################
 #              ROUTES                     #
@@ -516,6 +531,74 @@ def bgg_boardgame(game_id):
         return jsonify({"error": str(e)}), 500
 
 #############################################
+#         SCUFFED ADMIN LOGIN ENDPOINTS     #
+#############################################
+
+@app.route('/login', methods=['POST'])
+def login():
+    #get the username and password from the request body
+    #check that the credentials are valid
+    #if the credentials are valid, generate and return a new session token
+    #if the credentials are invalid, return an error
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+
+    admin = Admins.query.filter_by(username=username).first
+    if admin and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+        # Generate session token
+        token = str(uuid.uuid4())
+        expires_at = datetime.utcnow() + timedelta(minutes=60)
+
+        admin.session_token = token
+        admin.session_exp = expires_at.isoformat()
+
+        db.session.commit()
+
+        return jsonify({'token': token})
+
+    return jsonify({'error': 'Invalid credentials'}), 401
+
+
+@app.route('/validate-session', methods=['POST'])
+def validate_session():
+    #get the session token from the request body
+    #check that the session token exists in the admin table
+    #if it exists, check that it isn't expired
+    #if it's not expired, extending the expiration and return true
+    #otherwise return false
+    data = request.json
+    token = data.get('token')
+
+    session = Admins.query.filter_by(session_token=token)
+    if session:
+        if session.expires_at > datetime.now(timezone.utc):
+            # Extend session
+            session.expires_at = datetime.utcnow() + timedelta(minutes=60)
+            db.session.commit()
+            return jsonify({'valid': True})
+        else:
+            # Session expired
+            session.expires_at = None
+            session.session_token = None
+            return jsonify({'valid': False, 'error': 'Session expired'}), 401
+
+    return jsonify({'valid': False, 'error': 'Invalid token'}), 401
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    #get the session token from the request
+    #delete the session token from the admin user who owns it
+    data = request.json
+    token = data.get('token')
+    admin = Admins.query.filter_by(session_token=token)
+    if admin:
+        admin.expires_at = None
+        admin.session_token = None
+        return jsonify({'success': True})
+    return jsonify({'success': False})
+
+#############################################
 #         CLEANUP ENDPOINT                #
 #############################################
 @app.route('/cleanup', methods=['POST'])
@@ -631,6 +714,110 @@ def check_event_conflict(start_iso, end_iso):
     return False  # No conflict
 
 
+@app.route('/send-approval', methods=['POST'])
+def send_approval():
+    # Restrict access to local requests only
+    if request.remote_addr != '127.0.0.1':
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    data = request.get_json()
+    # Expected fields: 'name', 'email', 'eventTime', 'confirmationLink'
+    name = data.get('name')
+    to_email = data.get('email')
+    event_time = data.get('eventTime')
+    confirmation_link = data.get('confirmationLink')
+    
+    if not all([name, to_email, event_time, confirmation_link]):
+        return jsonify({"error": "Missing one or more required fields"}), 400
+    
+    # Build a professional, thematic HTML
+    subject = "Board & Bevy: Your Event Booking Has Been Approved!"
+    html_content = f"""
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Board & Bevy Approval</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; margin: 0; padding: 0;">
+        <div style="background-color: #333333; padding: 10px;">
+          <img src="https://i.ibb.co/0KK2k9t/bb-crest.png" alt="Board & Bevy Logo" style="height:60px;vertical-align:middle;">
+          <span style="color: #fff; font-size: 24px; margin-left: 10px;">Board & Bevy</span>
+        </div>
+        <div style="padding: 20px;">
+          <h2 style="color: #444;">Hello {name},</h2>
+          <p>We’re excited to let you know that your event booking request has been <strong>approved</strong>!</p>
+          <p>Event Time: <strong>{event_time}</strong></p>
+          <p style="margin-top: 20px;">To finalize your booking, please confirm your reservation by visiting the link below:</p>
+          <p>
+            <a href="{confirmation_link}" style="background-color: #fdbf2d; color: #000; padding: 10px 20px;
+               text-decoration: none; font-weight: bold; border-radius: 5px;">
+              Confirm Your Booking
+            </a>
+          </p>
+          <p>We can’t wait to see you at Board & Bevy, a Tabletop Pub in Kent, Ohio!</p>
+          <hr style="margin-top: 30px;"/>
+          <p style="font-size: 12px; color: #666;">If you have any questions or need to make changes, please reply to this email.</p>
+          <p style="font-size: 12px; color: #666;">Board & Bevy &copy; 2025</p>
+        </div>
+      </body>
+    </html>
+    """
+    send_response = send_email_via_ses(to_email, subject, html_content)
+    
+    if not send_response:
+        return jsonify({"error": "Failed to send approval email"}), 500
+    
+    return jsonify({"message": "Approval email sent successfully"}), 200
+
+@app.route('/send-rejection', methods=['POST'])
+def send_rejection():
+    # Restrict access to local requests only
+    if request.remote_addr != '127.0.0.1':
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    data = request.get_json()
+    # Expected fields: 'name', 'email', 'eventTime', 'reason'
+    name = data.get('name')
+    to_email = data.get('email')
+    event_time = data.get('eventTime')
+    reason = data.get('reason')
+    
+    if not all([name, to_email, event_time, reason]):
+        return jsonify({"error": "Missing one or more required fields"}), 400
+    
+    subject = "Board & Bevy: Your Event Booking Request"
+    html_content = f"""
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Board & Bevy Rejection</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; margin: 0; padding: 0;">
+        <div style="background-color: #333333; padding: 10px;">
+          <img src="https://i.ibb.co/0KK2k9t/bb-crest.png" alt="Board & Bevy Logo" style="height:60px;vertical-align:middle;">
+          <span style="color: #fff; font-size: 24px; margin-left: 10px;">Board & Bevy</span>
+        </div>
+        <div style="padding: 20px;">
+          <h2 style="color: #444;">Hello {name},</h2>
+          <p>Thank you for your interest in booking an event with Board & Bevy.</p>
+          <p>Unfortunately, we were unable to approve your booking request for <strong>{event_time}</strong>.</p>
+          <p><strong>Reason for Rejection:</strong> {reason}</p>
+          <p>We apologize for any inconvenience this may cause. If you have any questions or would like to discuss other possible times or arrangements, feel free to reach out.</p>
+          <hr style="margin-top: 30px;"/>
+          <p style="font-size: 12px; color: #666;">Thank you again for considering Board & Bevy for your event.</p>
+          <p style="font-size: 12px; color: #666;">Board & Bevy &copy; 2025</p>
+        </div>
+      </body>
+    </html>
+    """
+    
+    send_response = send_email_via_ses(to_email, subject, html_content)
+    
+    if not send_response:
+        return jsonify({"error": "Failed to send rejection email"}), 500
+    
+    return jsonify({"message": "Rejection email sent successfully"}), 200
+
 @app.route('/create-game', methods=['POST'])
 def create_calendar_game():
     data = request.get_json()
@@ -704,5 +891,38 @@ def resize_image(image_data, max_width=800, max_height=600):
     
     return buffer.getvalue()
 
+
+def send_email_via_ses(to_email, subject, html_content):
+    """
+    Sends an HTML email using AWS SES.
+    to_email    : str, recipient's email address
+    subject     : str, email subject
+    html_content: str, HTML string for the email body
+    """
+    try:
+        response = ses_client.send_email(
+            Source=SENDER_EMAIL,
+            Destination={
+                'ToAddresses': [to_email],
+            },
+            Message={
+                'Subject': {
+                    'Data': subject,
+                    'Charset': 'UTF-8'
+                },
+                'Body': {
+                    'Html': {
+                        'Data': html_content,
+                        'Charset': 'UTF-8'
+                    }
+                }
+            }
+        )
+        return response
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return None
+    
+    
 if __name__ == '__main__':
     app.run(debug=True)

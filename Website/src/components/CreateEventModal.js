@@ -1,39 +1,38 @@
 import React, { useState, useEffect } from "react";
 import api from "../api/axiosClient";
 
-// Helper function to parse a date string in "YYYYMMDDTHHmmssZ" format.
-function parseEventDate(dateStr) {
-  const formatted = dateStr.replace(
-    /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/,
-    "$1-$2-$3T$4:$5:$6Z"
-  );
-  return new Date(formatted);
-}
-
-// Helper to combine a date (YYYY-MM-DD) and time (HH:MM) into "YYYYMMDDTHHmmssZ" format.
-// Seconds are defaulted to "00".
+// Helper to combine local date (YYYY-MM-DD) and time (HH:MM) into a UTC ISO string.
 function combineDateTime(date, time) {
-  const datePart = date.replace(/-/g, ""); // e.g., "20250303"
-  const timePart = time.replace(":", "") + "00"; // e.g., "190000"
-  return `${datePart}T${timePart}Z`;
+  // Construct a local Date object from separate date and time fields.
+  const localDateTime = new Date(`${date}T${time}:00`);
+  // Convert the local Date to a standard ISO string (UTC)
+  return localDateTime.toISOString();
 }
 
 export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit, onDelete }) {
-  // Parse initial start and end times if available.
+  // Convert stored UTC times to the user's local date/time strings.
   const initialStartDate = initialData && initialData.startTime 
-    ? parseEventDate(initialData.startTime).toISOString().slice(0, 10) 
+    ? new Date(initialData.startTime).toLocaleDateString("en-CA")
     : "";
   const initialStartTime = initialData && initialData.startTime 
-    ? parseEventDate(initialData.startTime).toISOString().slice(11, 16) 
+    ? new Date(initialData.startTime).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })
     : "";
   const initialEndDate = initialData && initialData.endTime 
-    ? parseEventDate(initialData.endTime).toISOString().slice(0, 10) 
+    ? new Date(initialData.endTime).toLocaleDateString("en-CA")
     : "";
   const initialEndTime = initialData && initialData.endTime 
-    ? parseEventDate(initialData.endTime).toISOString().slice(11, 16) 
+    ? new Date(initialData.endTime).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })
     : "";
 
-  // Controlled state for form fields.
+  // State for form fields.
   const [eventName, setEventName] = useState(initialData?.title || "");
   const [startDate, setStartDate] = useState(initialStartDate);
   const [endDate, setEndDate] = useState(initialEndDate);
@@ -41,31 +40,29 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
   const [endTime, setEndTime] = useState(initialEndTime);
   const [description, setDescription] = useState(initialData?.description || "");
   const [price, setPrice] = useState(initialData?.price || "");
-  // Keep the current image URL (if any) for preview.
   const [image, setImage] = useState(initialData?.image || "");
-  // New state for storing an uploaded image file.
   const [imageFile, setImageFile] = useState(null);
   
-  // Flag to track if end date has been manually modified.
+  // Flag for auto-filling the end date if not manually changed.
   const [hasEndDateBeenModified, setHasEndDateBeenModified] = useState(!!initialData?.endTime);
-
-  // State for recurring event.
+  
+  // State for recurring events.
   const [isRecurring, setIsRecurring] = useState(initialData?.isRecurring || false);
-
-  // State for "Game" auto-suggest.
+  
+  // State for game suggestions.
   const [gameQuery, setGameQuery] = useState("");
   const [selectedGameId, setSelectedGameId] = useState(initialData?.game || null);
   const [catalogueItems, setCatalogueItems] = useState([]);
   const [gameSuggestions, setGameSuggestions] = useState([]);
 
-  // Fetch catalogue items once when the modal mounts.
+  // Fetch catalogue items on mount.
   useEffect(() => {
     api.get("/catalogue/titles")
       .then((response) => setCatalogueItems(response.data))
       .catch((error) => console.error("Error fetching catalogue:", error));
   }, []);
-  
-  // Update game suggestions whenever gameQuery or catalogueItems change.
+
+  // Update game suggestions when gameQuery changes.
   useEffect(() => {
     if (gameQuery.trim() === "") {
       setGameSuggestions([]);
@@ -93,7 +90,7 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
     }
   }, [initialData, initialStartDate, initialEndDate, initialStartTime, initialEndTime]);
 
-  // When the start date changes, auto-fill the end date if the user hasn't modified it.
+  // Auto-fill end date if not modified.
   const handleStartDateChange = (e) => {
     const newStartDate = e.target.value;
     setStartDate(newStartDate);
@@ -107,15 +104,16 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
     setHasEndDateBeenModified(true);
   };
 
-  // Handle file selection for image upload.
+  // Handle file selection for image uploads.
   const handleImageUpload = (e) => {
     if (e.target.files && e.target.files[0]) {
       setImageFile(e.target.files[0]);
-      // Optionally clear the existing image URL if a new file is selected.
+      // Optionally clear existing image URL if a new image is selected.
       setImage("");
     }
   };
 
+  // Convert a file to base64.
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -126,41 +124,40 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
   };
 
   // Handle form submission.
- const handleSubmit = async () => {
-  // Combine the separate date and time inputs back into ISO format.
-  const updatedStartTime = combineDateTime(startDate, startTime);
-  const updatedEndTime = combineDateTime(endDate, endTime);
+  const handleSubmit = async () => {
+    // Combine inputs into proper UTC times.
+    const updatedStartTime = combineDateTime(startDate, startTime);
+    const updatedEndTime = combineDateTime(endDate, endTime);
 
-  // Convert the image file to a base64 string if one is selected.
-  let imageData = image; // use the current image URL if no new file is selected
-  if (imageFile) {
-    try {
-      imageData = await fileToBase64(imageFile);
-    } catch (err) {
-      console.error("Error converting file to base64:", err);
+    let imageData = image;
+    if (imageFile) {
+      try {
+        imageData = await fileToBase64(imageFile);
+      } catch (err) {
+        console.error("Error converting file to base64:", err);
+      }
     }
-  }
 
-  // Construct the updated event object with the actual image data.
-  const updatedEvent = {
-    ...initialData, // include other fields from initialData if needed
-    title: eventName,
-    startTime: updatedStartTime,
-    endTime: updatedEndTime,
-    description,
-    price,
-    image: imageData, // this will be the base64 encoded image string
-    recurring: isRecurring,
-    game: selectedGameId,
-    isRecurring,
+    // Construct the updated event object.
+    const updatedEvent = {
+      ...initialData,
+      title: eventName,
+      startTime: updatedStartTime, // stored as UTC ISO string
+      endTime: updatedEndTime,     // stored as UTC ISO string
+      description,
+      price,
+      image: imageData,
+      recurring: isRecurring,
+      game: selectedGameId,
+      isRecurring,
+    };
+
+    console.log(updatedEvent);
+    if (onSubmit) {
+      onSubmit(updatedEvent);
+    }
+    setIsModalOpen(false);
   };
-
-  console.log(updatedEvent);
-  if (onSubmit) {
-    onSubmit(updatedEvent);
-  }
-  setIsModalOpen(false);
-};
 
   const handleDelete = () => {
     if (window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
@@ -181,7 +178,6 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
         onClick={() => setIsModalOpen(false)}
       >
         <div className="bg-white p-6 rounded-lg shadow-lg w-[600px] relative" onClick={(e) => e.stopPropagation()}>
-          {/* Close Button */}
           <button 
             onClick={() => setIsModalOpen(false)} 
             className="absolute top-2 right-2 text-gray-600 hover:text-black"
@@ -285,7 +281,6 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
                 onChange={(e) => setDescription(e.target.value)}
               ></textarea>
 
-              {/* File Upload Field */}
               <label className="block mt-2 mb-1 font-semibold">Upload Event Image</label>
               <input 
                 type="file" 
@@ -294,7 +289,6 @@ export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit
                 onChange={handleImageUpload}
               />
 
-              {/* Display image preview if available */}
               {(imageFile || image) && (
                 <div className="mt-2">
                   <p className="font-semibold">Image Preview:</p>

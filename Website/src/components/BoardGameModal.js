@@ -1,6 +1,7 @@
 import React from "react";
 import DOMPurify from "dompurify";
 import api from "../api/axiosClient";
+
 export default function BoardGameModal({ isAdmin, game, onClose, fetchBoardGames}) {
 
   const handleDelete = async () => {
@@ -11,22 +12,36 @@ export default function BoardGameModal({ isAdmin, game, onClose, fetchBoardGames
       console.error("Error deleting game:", error);
     }
   };
+  
   return (
     <div
       className="fixed inset-0 flex items-center justify-center z-50"
       style={{ backgroundColor: "rgba(0, 0, 0, 0.85)" }}
       onClick={onClose}
     >
-      {isAdmin && (<button 
-        onClick={handleDelete} 
-        className="absolute top-30 right-150 p-1 text-red-600 hover:text-red-800 transition"
-      >
-        🗑️
-      </button>)}
       <div
-        className="bg-white p-8 rounded-lg shadow-lg max-w-3xl w-full overflow-auto"
+        className="bg-white p-8 rounded-lg shadow-lg max-w-3xl w-full overflow-auto relative"
         onClick={(e) => e.stopPropagation()} // Prevents modal close on inner click
       >
+        {/* Close button in top-right corner */}
+        <button 
+			onClick={onClose}
+			className="absolute top-2 right-2 px-2 py-1 rounded group hover:scale-105 transition-all"
+		>
+			<span className="relative z-10 text-white">✕</span>
+			<span className="absolute inset-0 bg-[#942E2A] rounded"></span>
+			<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded"></span>
+		</button>
+        
+        {/* Delete button for admin */}
+        {isAdmin && (
+          <button 
+            onClick={handleDelete} 
+            className="absolute top-2 right-12 p-1 text-red-600 hover:text-red-800 transition"
+          >
+            🗑️
+          </button>
+        )}
 
         <img
           src={game.image}
@@ -43,16 +58,10 @@ export default function BoardGameModal({ isAdmin, game, onClose, fetchBoardGames
         </p>
         <br></br>
         <div 
-        className="h-40 mb-2 text-sm text-gray-800 scroll-hover"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(game.description) }}
-      />
-        <button
-          onClick={onClose}
-          className="mt-4 px-4 py-2 bg-[#942E2A] text-white rounded"
-        >
-          Close
-        </button>
+          className="h-40 mb-2 text-sm text-gray-800 scroll-hover"
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(game.description) }}
+        />
       </div>
-      </div>
+    </div>
   );
 }
