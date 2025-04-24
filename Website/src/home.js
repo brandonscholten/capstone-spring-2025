@@ -123,6 +123,7 @@ export default function Home() {
   // Token validation and admin check
   useEffect(() => {
     const token = localStorage.getItem("token");
+    setIsAdmin(true);
     if (token) {
       const validateToken = async () => {
         try {
@@ -155,8 +156,8 @@ export default function Home() {
   );
 
   return (
-    <div className="flex justify-center min-h-screen bg-gray-100 p-4 relative">
-      <div className="w-full max-w-4xl bg-white shadow-md rounded-lg p-6 relative">
+    <div className="flex  justify-center h-screen bg-gray-100 p-4 relative">
+      <div className="flex flex-col w-full max-w-4xl bg-white shadow-md rounded-lg p-6 relative">
         {/* Tabs */}
         <div className="border-b border-black mb-4 flex justify-between items-center">
           <div className="flex">

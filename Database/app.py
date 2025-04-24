@@ -544,8 +544,9 @@ def login():
     username = data.get('username')
     password = data.get('password')
 
-    admin = Admins.query.filter_by(username=username).first
-    if admin and bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+    admin = Admins.query.filter_by(username=username).first()
+    print(admin)
+    if admin and bcrypt.checkpw(password.encode('utf-8'), admin.password.encode('utf-8')):
         # Generate session token
         token = str(uuid.uuid4())
         expires_at = datetime.utcnow() + timedelta(minutes=60)
@@ -635,6 +636,7 @@ def announce_event(event):
         'start_time': event.start_time.isoformat(),
         'end_time': event.end_time.isoformat(),
         'price': event.price,
+        'image': base64.b64encode(event.image).decode('utf-8') if event.image else None,
         'game': event.game.title if event.game else None,
         'participants': event.participants,
         'id': event.id,

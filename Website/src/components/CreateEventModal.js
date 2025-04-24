@@ -1,337 +1,256 @@
+// src/components/CreateEventModal.jsx
 import React, { useState, useEffect } from "react";
+import ReactDOM from "react-dom";
 import api from "../api/axiosClient";
 
-// Helper to combine local date (YYYY-MM-DD) and time (HH:MM) into a UTC ISO string.
+// Helper: combine local YYYY-MM-DD + HH:MM into UTC ISO
 function combineDateTime(date, time) {
-  // Construct a local Date object from separate date and time fields.
-  const localDateTime = new Date(`${date}T${time}:00`);
-  // Convert the local Date to a standard ISO string (UTC)
-  return localDateTime.toISOString();
+  console.log(time)
+  const dt = new Date(`${date}T${time}:00`);
+  dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+  return dt.toISOString();
 }
 
-export default function CreateEventModal({ setIsModalOpen, initialData, onSubmit, onDelete }) {
-  // Convert stored UTC times to the user's local date/time strings.
-  const initialStartDate = initialData && initialData.startTime 
+
+export default function CreateEventModal({
+  setIsModalOpen,
+  initialData,
+  onSubmit,
+  onDelete,
+}) {
+  // --- HOOKS: always run ---
+  const initialStartDate = initialData?.startTime
     ? new Date(initialData.startTime).toLocaleDateString("en-CA")
     : "";
-  const initialStartTime = initialData && initialData.startTime 
-    ? new Date(initialData.startTime).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      })
+  const initialStartTime = initialData?.startTime
+    ? new Date(initialData.startTime)
+        .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
     : "";
-  const initialEndDate = initialData && initialData.endTime 
+  const initialEndDate = initialData?.endTime
     ? new Date(initialData.endTime).toLocaleDateString("en-CA")
     : "";
-  const initialEndTime = initialData && initialData.endTime 
-    ? new Date(initialData.endTime).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      })
+  const initialEndTime = initialData?.endTime
+    ? new Date(initialData.endTime)
+        .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
     : "";
 
-  // State for form fields.
-  const [eventName, setEventName] = useState(initialData?.title || "");
-  const [startDate, setStartDate] = useState(initialStartDate);
-  const [endDate, setEndDate] = useState(initialEndDate);
-  const [startTime, setStartTime] = useState(initialStartTime);
-  const [endTime, setEndTime] = useState(initialEndTime);
-  const [description, setDescription] = useState(initialData?.description || "");
-  const [price, setPrice] = useState(initialData?.price || "");
-  const [image, setImage] = useState(initialData?.image || "");
-  const [imageFile, setImageFile] = useState(null);
-  
-  // Flag for auto-filling the end date if not manually changed.
-  const [hasEndDateBeenModified, setHasEndDateBeenModified] = useState(!!initialData?.endTime);
-  
-  // State for recurring events.
-  const [isRecurring, setIsRecurring] = useState(initialData?.isRecurring || false);
-  
-  // State for game suggestions.
-  const [gameQuery, setGameQuery] = useState("");
-  const [selectedGameId, setSelectedGameId] = useState(initialData?.game || null);
-  const [catalogueItems, setCatalogueItems] = useState([]);
-  const [gameSuggestions, setGameSuggestions] = useState([]);
+  const [eventName, setEventName]       = useState(initialData?.title || "");
+  const [startDate, setStartDate]       = useState(initialStartDate);
+  const [startTime, setStartTime]       = useState(initialStartTime);
+  const [endDate, setEndDate]           = useState(initialEndDate);
+  const [endTime, setEndTime]           = useState(initialEndTime);
+  const [description, setDescription]   = useState(initialData?.description || "");
+  const [price, setPrice]               = useState(initialData?.price || "");
+  const [imageUrl, setImageUrl]         = useState(initialData?.image || "");
+  const [imageFile, setImageFile]       = useState(null);
+  const [isRecurring, setIsRecurring]   = useState(initialData?.recurring || false);
 
-  // Fetch catalogue items on mount.
+  // Sync when initialData changes (edit mode)
   useEffect(() => {
-    api.get("/catalogue/titles")
-      .then((response) => setCatalogueItems(response.data))
-      .catch((error) => console.error("Error fetching catalogue:", error));
-  }, []);
+    if (!initialData) return;
+    setEventName(initialData.title || "");
+    setStartDate(initialStartDate);
+    setStartTime(initialStartTime);
+    setEndDate(initialEndDate);
+    setEndTime(initialEndTime);
+    setDescription(initialData.description || "");
+    setPrice(initialData.price || "");
+    setImageUrl(initialData.image || "");
+    setIsRecurring(initialData.recurring || false);
+  }, [initialData, initialStartDate, initialStartTime, initialEndDate, initialEndTime]);
 
-  // Update game suggestions when gameQuery changes.
-  useEffect(() => {
-    if (gameQuery.trim() === "") {
-      setGameSuggestions([]);
-    } else {
-      const suggestions = catalogueItems.filter((item) =>
-        item.title.toLowerCase().includes(gameQuery.toLowerCase())
-      );
-      setGameSuggestions(suggestions);
-    }
-  }, [gameQuery, catalogueItems]);
-
-  // Update state if initialData changes.
-  useEffect(() => {
-    if (initialData) {
-      setEventName(initialData.title || "");
-      setStartDate(initialStartDate);
-      setEndDate(initialEndDate);
-      setStartTime(initialStartTime);
-      setEndTime(initialEndTime);
-      setDescription(initialData.description || "");
-      setPrice(initialData.price || "");
-      setImage(initialData.image || "");
-      setSelectedGameId(initialData.game || null);
-      setIsRecurring(initialData.isRecurring || false);
-    }
-  }, [initialData, initialStartDate, initialEndDate, initialStartTime, initialEndTime]);
-
-  // Auto-fill end date if not modified.
-  const handleStartDateChange = (e) => {
-    const newStartDate = e.target.value;
-    setStartDate(newStartDate);
-    if (!hasEndDateBeenModified) {
-      setEndDate(newStartDate);
-    }
-  };
-
-  const handleEndDateChange = (e) => {
-    setEndDate(e.target.value);
-    setHasEndDateBeenModified(true);
-  };
-
-  // Handle file selection for image uploads.
+  // File → preview
   const handleImageUpload = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setImageFile(e.target.files[0]);
-      // Optionally clear existing image URL if a new image is selected.
-      setImage("");
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setImageUrl("");
     }
   };
-
-  // Convert a file to base64.
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
+  const fileToBase64 = (file) =>
+    new Promise((res, rej) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = error => reject(error);
+      reader.onload  = () => res(reader.result);
+      reader.onerror = (err) => rej(err);
     });
-  };
 
-  // Handle form submission.
-  const handleSubmit = async () => {
-    // Combine inputs into proper UTC times.
-    const updatedStartTime = combineDateTime(startDate, startTime);
-    const updatedEndTime = combineDateTime(endDate, endTime);
+  // Save handler
+  const handleSave = async () => {
+    console.log(startDate, startTime, endDate, endTime);
+    const isoStart = combineDateTime(startDate, startTime);
+    const isoEnd   = combineDateTime(endDate,   endTime);
 
-    let imageData = image;
+    let finalImage = imageUrl;
     if (imageFile) {
-      try {
-        imageData = await fileToBase64(imageFile);
-      } catch (err) {
-        console.error("Error converting file to base64:", err);
-      }
+      try { finalImage = await fileToBase64(imageFile); }
+      catch (err) { console.error("Image conversion failed:", err); }
     }
 
-    // Construct the updated event object.
-    const updatedEvent = {
+    const payload = {
       ...initialData,
-      title: eventName,
-      startTime: updatedStartTime, // stored as UTC ISO string
-      endTime: updatedEndTime,     // stored as UTC ISO string
+      title:     eventName,
+      startTime: isoStart,
+      endTime:   isoEnd,
       description,
       price,
-      image: imageData,
+      image:     finalImage,
       recurring: isRecurring,
-      game: selectedGameId,
-      isRecurring,
     };
 
-    console.log(updatedEvent);
-    if (onSubmit) {
-      onSubmit(updatedEvent);
-    }
+    onSubmit(payload);
     setIsModalOpen(false);
   };
 
+  // Delete handler
   const handleDelete = () => {
-    if (window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) {
-      if (onDelete) {
-        onDelete(initialData.id);
-      } else {
-        console.log("Deleting event:", initialData);
-      }
+    if (window.confirm("Delete this event? This cannot be undone.")) {
+      onDelete(initialData.id);
       setIsModalOpen(false);
     }
   };
 
-  return (
-    <div className="relative">
-      <div 
-        className="fixed inset-0 flex justify-center items-center z-50" 
-        style={{ backgroundColor: "rgba(0, 0, 0, 0.85)" }}
+  // --- PORTAL RENDER ---
+  return ReactDOM.createPortal(
+    <>
+      {/* Backdrop */}
+      <div
         onClick={() => setIsModalOpen(false)}
+        className="fixed inset-0 bg-black  z-50"
+        style={{ backgroundColor: "rgba(0, 0, 0, 0.85)" }}
+      />
+
+      {/* Modal Panel */}
+      <div
+        onClick={() => setIsModalOpen(false)}
+        className="fixed inset-0 flex items-center justify-center p-4 z-50"
       >
-        <div className="bg-white p-6 rounded-lg shadow-lg w-[600px] relative" onClick={(e) => e.stopPropagation()}>
-          <button 
-            onClick={() => setIsModalOpen(false)} 
-            className="absolute top-2 right-2 text-gray-600 hover:text-black"
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="relative bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-full overflow-auto p-6"
+        >
+          {/* Close “X” */}
+          <button
+            onClick={() => setIsModalOpen(false)}
+            className="absolute top-4 right-4 text-gray-500 hover:text-gray-800"
           >
             ✕
           </button>
 
-          <h2 className="text-2xl font-bold text-center mb-4">
+          <h2 className="text-2xl font-bold mb-4 text-center">
             {initialData ? "Edit Event" : "Create Event"}
           </h2>
-          
+
           <div className="grid grid-cols-2 gap-4">
-            {/* Left Side Inputs */}
+            {/* Left */}
             <div>
-              <label className="block mb-1 font-semibold">Event Name</label>
-              <input 
-                type="text" 
-                className="w-full border p-2 rounded" 
-                value={eventName} 
+              <label className="block mb-1">Event Name</label>
+              <input
+                type="text"
+                className="w-full border p-2 rounded mb-2"
+                value={eventName}
                 onChange={(e) => setEventName(e.target.value)}
               />
 
-              <label className="block mt-2 mb-1 font-semibold">Start Date</label>
-              <input 
-                type="date" 
-                className="w-full border p-2 rounded" 
-                value={startDate} 
-                onChange={handleStartDateChange}
+              <label className="block mb-1">Start Date</label>
+              <input
+                type="date"
+                className="w-full border p-2 rounded mb-2"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
               />
 
-              <label className="block mt-2 mb-1 font-semibold">End Date</label>
-              <input 
-                type="date" 
-                className="w-full border p-2 rounded" 
-                value={endDate} 
-                onChange={handleEndDateChange}
+              <label className="block mb-1">End Date</label>
+              <input
+                type="date"
+                className="w-full border p-2 rounded mb-2"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
               />
-
-              <label className="block mt-2 mb-1 font-semibold">Start Time</label>
-              <input 
-                type="time" 
-                className="w-full border p-2 rounded" 
-                value={startTime} 
+              <label className="block mb-1">Start Time</label>
+              <input
+                type="time"
+                className="w-full border p-2 rounded mb-2"
+                value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
               />
-
-              <label className="block mt-2 mb-1 font-semibold">End Time</label>
-              <input 
-                type="time" 
-                className="w-full border p-2 rounded" 
-                value={endTime} 
+              <label className="block mb-1">End Time</label>
+              <input
+                type="time"
+                className="w-full border p-2 rounded mb-2"
+                value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
               />
 
-              <label className="block mt-2 mb-1 font-semibold">Price</label>
-              <input 
-                type="text" 
-                className="w-full border p-2 rounded" 
-                placeholder="Enter price (e.g., $10)" 
+
+
+              <label className="block mb-1">Price</label>
+              <input
+                type="text"
+                className="w-full border p-2 rounded mb-2"
+                placeholder="$0"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
               />
 
-              <label className="block mt-2 mb-1 font-semibold">Game (from Catalogue)</label>
-              <input 
-                type="text" 
-                className="w-full border p-2 rounded" 
-                placeholder="Type to search game..." 
-                value={gameQuery}
-                onChange={(e) => {
-                  setGameQuery(e.target.value);
-                  setSelectedGameId(null);
-                }}
-              />
-              {gameSuggestions.length > 0 && (
-                <ul className="border border-gray-300 mt-1 max-h-32 overflow-y-auto">
-                  {gameSuggestions.map((item) => (
-                    <li 
-                      key={item.id}
-                      className="p-2 hover:bg-gray-200 cursor-pointer"
-                      onClick={() => {
-                        setGameQuery(item.title);
-                        setSelectedGameId(item.id);
-                        setTimeout(() => setGameSuggestions([]), 100);
-                      }}
-                    >
-                      {item.title}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <label className="flex items-center mt-2">
+                <input
+                  type="checkbox"
+                  className="mr-2"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                />
+                Recurring Weekly
+              </label>
             </div>
 
-            {/* Right Side Inputs */}
-            <div className="flex flex-col">
-              <label className="block mb-1 font-semibold">Event Description</label>
-              <textarea 
-                className="w-full border p-2 rounded h-32" 
-                placeholder="Enter event description..."
-                value={description} 
+            {/* Right */}
+            <div>
+              <label className="block mb-1">Description</label>
+              <textarea
+                className="w-full border p-2 rounded mb-2 h-32"
+                value={description}
                 onChange={(e) => setDescription(e.target.value)}
-              ></textarea>
+              />
 
-              <label className="block mt-2 mb-1 font-semibold">Upload Event Image</label>
-              <input 
-                type="file" 
-                accept="image/*" 
-                className="w-full border p-2 rounded"
+              <label className="block mb-1">Event Image</label>
+              <input
+                type="file"
+                accept="image/*"
+                className="w-full mb-2"
                 onChange={handleImageUpload}
               />
 
-              {(imageFile || image) && (
-                <div className="mt-2">
-                  <p className="font-semibold">Image Preview:</p>
-                  <img 
-                    src={imageFile ? URL.createObjectURL(imageFile) : image} 
-                    alt="Event" 
-                    className="max-w-full h-auto" 
-                  />
-                </div>
-              )}
-
-              <label className="block mt-2 mb-1 font-semibold">Recurring Event</label>
-              <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  checked={isRecurring} 
-                  onChange={(e) => setIsRecurring(e.target.checked)} 
-                  className="mr-2"
+              {(imageFile || imageUrl) && (
+                <img
+                  src={imageFile ? URL.createObjectURL(imageFile) : imageUrl}
+                  alt="Preview"
+                  className="max-w-full rounded mb-2"
                 />
-                <span>Occurs every week</span>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Actions */}
           <div className="flex justify-end gap-2 mt-4">
             {initialData && (
-              <button 
+              <button
                 onClick={handleDelete}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg"
+                className="px-4 py-2 bg-red-500 text-white rounded"
               >
-                Delete Event
+                Delete
               </button>
             )}
-            <button 
-              onClick={handleSubmit}
+            <button
+              onClick={handleSave}
               className="px-4 py-2 bg-[#3C574D] text-white rounded-lg"
             >
-              Save Event
+              {initialData ? "Save Changes" : "Create Event"}
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </>,
+    document.body
   );
 }

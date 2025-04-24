@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect  } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import RSVPModal from "./RSVPModal";
 import CreateEventModal from "./CreateEventModal"; // Ensure this modal supports edit mode via props
 
@@ -64,6 +64,12 @@ export default function EventCard({ event, isValid, resetEvents }) {
   const [isFlipped, setIsFlipped] = useState(false);
   const cardRef = useRef(null);
 
+  // Compute number of attendees from comma-separated names
+  const participantsArray = event.participants
+    ? event.participants.split(',').map((n) => n.trim()).filter(Boolean)
+    : [];
+  const attendingCount = participantsArray.length;
+
   const handleMouseEnter = (eventId) => {
     const timeout = setTimeout(() => {
       setHoveredEvent(eventId);
@@ -82,7 +88,6 @@ export default function EventCard({ event, isValid, resetEvents }) {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && !isFlipped) {
-            // Add a small delay before flipping for a cascading effect
             setTimeout(() => {
               setIsFlipped(true);
             }, 100);
@@ -103,79 +108,84 @@ export default function EventCard({ event, isValid, resetEvents }) {
     };
   }, []);
 
-  // Get the formatted date and time for display.
-  const { dateDisplay, timeDisplay } = formatEventDateTime(event.startTime, event.endTime);
-  const index = event.id % 10; // Use modulo to limit the range
-  const cardStyle = { 
-	'--delay': `${index * 0.15}s`,
-    margin: '0 auto',      // Center horizontally 
-    width: '100%',         // Take full width of parent
-    maxWidth: '500px',     // But limit to 500px max
-	};
-  
+  const { dateDisplay, timeDisplay } = formatEventDateTime(
+    event.startTime,
+    event.endTime
+  );
+  const index = event.id % 10;
+  const cardStyle = {
+    '--delay': `${index * 0.15}s`,
+    margin: '0 auto',
+    width: '100%',
+    maxWidth: '500px',
+  };
+
   return (
     <>
-		<div
-		ref={cardRef}
-		key={event.id}
-		data-id={event.id}
-		onMouseEnter={() => handleMouseEnter(event.id)}
-		onMouseLeave={handleMouseLeave}
-		className="container relative hover-container"
-		style={cardStyle}
-		>
-		<div className={`card ${isFlipped ? "flip" : ""}`}>
-			{/* Front of card */}
-			<div className="front rounded-lg shadow-lg p-4 flex flex-col items-center border border-gray-200 bg-white content-scale">
-			<img
-				src="/b&b_crest.png"
-				alt="Bot N Bevy Crest"
-				className="w-full h-full object-contain rounded-lg"
-			/>
-    </div>
-				
-				{/* Back of card */}
-				<div className="back rounded-lg shadow-lg p-4 flex flex-col items-center border border-gray-200 bg-white content-scale">
-					{/* Edit icon for admins */}
-					{isValid && (
-					<button
-						className="absolute top-2 right-2 text-gray-600 hover:text-black"
-						onClick={() => setEditModalOpen(true)}
-						title="Edit Event"
-					>
-						✏️
-					</button>
-					)}
-					{/* Event image */}
-					{event.image && (
-					<img
-					src={event.image}
-					alt={event.title}
-					className="w-full h-40 object-contain rounded-lg transition-all duration-300"
-				  	/>
-					)}
-					<div className="mt-4 text-center w-full">
-					<h2 className="text-xl font-bold mb-2">{event.title}</h2>
-					<p className="text-gray-700 font-semibold">Game: {event.game || 'N/A'}</p>
-					<p className="text-gray-700 font-semibold">Date: {dateDisplay}</p>
-					<p className="text-gray-700 font-semibold">Time: {timeDisplay}</p>
-					<p className="text-gray-700 font-semibold">Price: {event.price}</p>
-					<p className="text-gray-500 text-sm mt-2 h-16 overflow-y-auto p-1 border-gray-100 border-t border-b">
-						{event.description}
-					</p>
-						<button
-							className="mt-3 mb-2 px-4 py-2 bg-[#942E2A] text-white rounded hover:scale-105 transition-all group relative w-auto inline-block"
-							onClick={() => setRSVPModalOpen(true)}
-							>
-							<span className="relative z-10">RSVP</span>
-							<span className="absolute inset-0 bg-[#942E2A] rounded"></span>
-							<span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded"></span>
-						</button>
-					</div>
-				</div>
-				</div>
-			</div>
-            {isRSVPModalOpen && (
+      <div
+        ref={cardRef}
+        key={event.id}
+        data-id={event.id}
+        onMouseEnter={() => handleMouseEnter(event.id)}
+        onMouseLeave={handleMouseLeave}
+        className="container relative hover-container"
+        style={cardStyle}
+      >
+        <div className={`card ${isFlipped ? "flip" : ""}`}> 
+          {/* Front of card */}
+          <div className="front rounded-lg shadow-lg p-4 flex flex-col items-center border border-gray-200 bg-white content-scale">
+            <img
+              src="/b&b_crest.png"
+              alt="Bot N Bevy Crest"
+              className="w-full h-full object-contain rounded-lg"
+            />
+          </div>
+
+          {/* Back of card */}
+          <div className="back rounded-lg shadow-lg p-4 flex flex-col items-center border border-gray-200 bg-white content-scale">
+            {isValid && (
+              <button
+                className="absolute top-2 right-2 text-gray-600 hover:text-black"
+                onClick={() => setEditModalOpen(true)}
+                title="Edit Event"
+              >
+                ✏️
+              </button>
+            )}
+
+            {event.image && (
+              <img
+                src={event.image}
+                alt={event.title}
+                className="w-full h-40 object-contain rounded-lg transition-all duration-300"
+              />
+            )}
+
+            <div className="mt-4 text-center w-full">
+              <h2 className="text-xl font-bold mb-2">{event.title}</h2>
+              <p className="text-gray-700 font-semibold">Game: {event.game || 'N/A'}</p>
+              <p className="text-gray-700 font-semibold">Date: {dateDisplay}</p>
+              <p className="text-gray-700 font-semibold">Time: {timeDisplay}</p>
+              <p className="text-gray-700 font-semibold">Price: {event.price}</p>
+              <p className="text-gray-700 font-semibold">Attending: {attendingCount}</p>
+              <p className="text-gray-500 text-sm mt-2 h-16 overflow-y-auto p-1 border-gray-100 border-t border-b">
+                {event.description}
+              </p>
+
+              <button
+                className="mt-3 mb-2 px-4 py-2 bg-[#942E2A] text-white rounded hover:scale-105 transition-all group relative w-auto inline-block"
+                onClick={() => setRSVPModalOpen(true)}
+              >
+                <span className="relative z-10">RSVP</span>
+                <span className="absolute inset-0 bg-[#942E2A] rounded"></span>
+                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-[#576b1e] via-[#8ea37e] via-[#bdcc7a] via-[#c4cad5] via-[#d7c2cb] to-[#f8aa68] bg-[length:200%_100%] group-hover:animate-gradient rounded"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {isRSVPModalOpen && (
         <RSVPModal
           isOpen={isRSVPModalOpen}
           onClose={() => setRSVPModalOpen(false)}
@@ -184,36 +194,32 @@ export default function EventCard({ event, isValid, resetEvents }) {
           refresh={resetEvents}
         />
       )}
+
       {isEditModalOpen && (
         <CreateEventModal
           setIsModalOpen={setEditModalOpen}
           onClose={() => setEditModalOpen(false)}
           initialData={event}
           onSubmit={(updatedData) => {
-                fetch(`http://localhost:5000/events/${updatedData.id}`, {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(updatedData),
-                })
-                .then((res) => res.json())
-                .then(() => { resetEvents(); })
-                .catch((error) => console.error("Error updating event:", error));
-              setEditModalOpen(false);
-              }}
-              //FIX THIS IT"S INSECURE, ANYONE CAN HIT THE API WITHOUT NEEDING THE PASSWORD.
-              onDelete={(eventId) => {
-              fetch(`http://localhost:5000/events`, {
-                method: "DELETE",
-                headers: {
-                "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ id: eventId }),
-              })
-                .then((res) => res.json())
-                .then(() => { resetEvents(); })
-                .catch((error) => console.error("Error deleting event:", error));
+            fetch(`http://localhost:5000/events/${updatedData.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(updatedData),
+            })
+              .then((res) => res.json())
+              .then(() => { resetEvents(); })
+              .catch((error) => console.error("Error updating event:", error));
+            setEditModalOpen(false);
+          }}
+          onDelete={(eventId) => {
+            fetch(`http://localhost:5000/events`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: eventId }),
+            })
+              .then((res) => res.json())
+              .then(() => { resetEvents(); })
+              .catch((error) => console.error("Error deleting event:", error));
             setEditModalOpen(false);
           }}
         />
